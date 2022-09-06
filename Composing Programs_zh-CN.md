@@ -2,6 +2,8 @@
 
 > 以此感谢UCB的 John DeNero老师与CS61A 课程组
 >
+> 本书翻译的Github：https://github.com/kobayashilin1/composing_programs_zh_CN.git
+>
 > 附上学习CS61A 的RULES：
 >
 > A Few General Rules
@@ -1208,7 +1210,7 @@ result = cum_cubes(3)
 
 与往常一样，我们新的通用方法 `improve` 需要测试来检查其正确性。黄金分割比例可以提供这样的测试，因为它也有一个精确的**闭式解（closed-form solution）**，我们可以将其与这个迭代结果进行比较。
 
-> 翻译加：什么是闭式解？
+> 翻译注：什么是闭式解？
 >
 > 又称作解析解（Analytic expression），是可以用解析表达式来表达的解。 在数学上，如果一个方程或者方程组存在的某些解，是由有限次常见运算的组合给出的形式，则称该方程存在解析解。二次方程的根就是一个解析解的典型例子。在低年级数学的教学当中，解析解也被称为**公式解**。
 >
@@ -1253,4 +1255,65 @@ result = cum_cubes(3)
 
 和局部赋值一样，局部 `def` 语句只影响当前的局部帧。这些函数只在求根时起作用。与我们的求值过程一致，在调用 `sqrt` 函数之前，这些局部的 `def` 语句都不会进行求值。
 
-**词法作用域（Lexical scope）**。局部定义的函数还可以访问它们定义的作用域中的名称绑定。在这个示例中， `sqrt_update` 同样指向了 `a`，这里的名称 `a` 是包裹着 `sqrt_update` 函数的外层函数 `sqrt` 的形式参数。
+**词法作用域（Lexical scope）**。局部定义的函数还可以访问它们定义的作用域中的名称绑定。在这个示例中， `sqrt_update` 同样指向了 `a`，这里的名称 `a` 是包裹着 `sqrt_update` 函数的外层函数 `sqrt` 的形式参数。这种在嵌套函数中共享名称的规则叫做**词法作用域**。准确来说，内部的函数可以访问定义它们的环境中（而不是调用所在位置）的名称。
+
+我们需要对环境模型进行两个扩展来启用词法作用域。
+
+1. 每个用户定义的函数有一个父环境：也就是定义该函数的环境。
+2. 当用户定义的函数被调用时，其局部帧就会拓展它的父环境。
+
+在 `sqrt` 函数之前，所有函数都是在全局环境中定义的，因此它们都有相同的父环境：全局环境。相反，当Python计算 `sqrt` 的前两个子句（clauses）时，它会创建与本地环境相关联的函数。调用结果：
+
+```python
+>>> sqrt(256)
+16.0
+```
+
+环境首先为 `sqrt` 添加了一个局部帧，并对`sqrt_update` 和 `sqrt_close` 的 `def` 语句进行了运算。
+
+```python
+def average(x, y):
+    return (x + y)/2
+
+def improve(update, close, guess=1):
+    while not close(guess):
+        guess = update(guess)
+    return guess
+
+def approx_eq(x, y, tolerance=1e-3):
+    return abs(x - y) < tolerance
+
+def sqrt(a):
+    def sqrt_update(x):
+        return average(x, a/x)
+    def sqrt_close(x):
+        return approx_eq(x * x, a)
+    return improve(sqrt_update, sqrt_close)
+
+result = sqrt(256)
+```
+
+<img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220906202417258.png" alt="image-20220906202417258" style="zoom:80%;" />
+
+每个函数值都有一个新的父级环境（即类似于 `[parent=Global]` 标注）的注释，我们将从现在开始将其添加到环境关系图中。函数值的**父函数（parent）**是定义该函数的环境的第一帧。在全局环境中定义的函数没有父环境注释。当调用用户定义函数时，创建的帧与该函数具有相同的父函数。
+
+随后，名称 `sqrt_update` 解析为这个新定义的函数，该函数作为参数传给函数 `improve` 。在 `improve` 函数的函数体中，我们必须以猜测的初始值 `x` 为1来调用 `update` 函数（绑定到 `sqrt_update` ）。这个最后的程序调用为 `sqrt_update` 创建了一个环境，它以一个仅包含 `x` 的本地帧开始，但父帧 `sqrt` 仍然包含 `a` 的绑定。
+
+<img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220906203821307.png" alt="image-20220906203821307" style="zoom:80%;" />
+
+这个求值过程中最终的部分，是将 `sqrt_update` 的父环境变成了通过调用 `sqrt_update` 创建的（局部）帧。此帧用`[parent=f1]` 进行注释。
+
+**扩展环境（Extended Environments）**。一个环境由一长串帧构成，并且总是以全局帧结束。在举 `sqrt` 这个例子之前，环境最多只包含两种帧：局部帧和全局帧。通过调用在其他函数中定义的函数，使用嵌套的 `def` 语句，我们可以创建更长的（帧）链。调用 `sqrt_update` 的环境由三个帧组成：局部帧 `sqrt_update` 、定义`sqrt_update` 的 `sqrt` 帧（标记为 `f1`）和全局帧。
+
+`sqrt_update` 函数体中的返回表达式可以通过遵循这一帧链来解析 `a` 的值。查找名称会找到当前环境中绑定到该名称的第一个值。Python 首先在 `sqrt_update` 帧中进行检查 —— 不存在 `a` ，然后又到 `sqrt_update`  的父帧 `f1` 中进行检查，发现 `a` 被绑定到了256。
+
+因此，我们发现了 Python 中词法作用域的两个关键优势。
+
+- 局部函数的名称不会影响定义它的函数的外部名称，因为局部函数的名称将绑定在定义它的当前局部环境中，而不是全局环境中。
+- 局部函数可以访问外层函数的环境。这是因为局部函数的函数体的求值环境扩展于定义它的求值环境。
+
+这里的 `sqrt_update` 函数自带了一些数据：`a` 在定义它的环境中引用的值，因为它以这种方式“封装”信息，所以局部定义的函数通常被称为**闭包（closures）**。
+
+####  Functions as Returned Values（函数作为返回值）
+
+程序可以通过创建返回值本身就是函数的函数以获得更多的表现力。
