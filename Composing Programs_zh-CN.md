@@ -520,9 +520,7 @@ operator     operand 0     operand 1
 
 这些指南有很多例外，即使在 Python 标准库中也是如此。与英语语言的词汇一样，Python 继承了各种贡献者的词汇，结果并不总是一致的。
 
-#### Function as Abstractions（作为抽象的函数）
-
-（翻译注：这里标题内翻译的”抽象“二字，是个名词，函数只是抽象的一种具体形式。真的很想吐槽，翻译有时候真的很容易造成误解啊！）
+#### Function as Abstractions（函数作为抽象）
 
 虽然 `sum_squares` 非常简单，但它展示了用户定义函数最强大的特性。函数 `sum_squares` 根据函数 `square` 定义，但仅依赖于 `square` 在其输入参数和输出值之间定义的关系。我们可以不考虑如何求一个数的平方而直接写出 `sum_squares` 。如何计算平方的细节可以隐藏，稍后再考虑。实际上，就`sum_squares` 而言， `square` 并不是一个特定的函数体，而是一个**函数的抽象**，一个所谓的函数抽象。在这个抽象层次上，任何能计算平方的函数都是等价的。
 
@@ -1048,7 +1046,7 @@ python3 -m doctest <python_source_file>
 
 为了将某些通用模式表示为命名概念，我们需要构造可以接受其他函数作为参数，或返回函数作为值的函数。操作函数的函数称为**高阶函数（higher-order function）**。本节将展示高阶函数如何充当强大的抽象机制，从而极大地提高语言的表达能力。
 
-#### Functions as Arguments（作为参数的函数）
+#### Functions as Arguments（函数作为参数）
 
 思考下面三个都是求和的函数。第一个是 `sum_naturals` ，作用为计算到 `n` 为止所有自然数的和：
 
@@ -1159,18 +1157,75 @@ result = cum_cubes(3)
 
 
 
-####  Functions as General Methods（作为一般方法的函数）
+####  Functions as General Methods（函数作为一般方法）
 
 我们引入了用户定义函数作为数值运算的抽象模式，以使它们独立于特定数字。有了高阶函数，我们会见识到一种更强大的抽象：:一些函数表示通用的计算方法，独立于它们调用的特定函数。（ some functions express general methods of computation, independent of the particular functions they call.）
 
 尽管对函数的含义进行了这种概念上的扩展，但我们关于如何计算调用表达式的环境模型可以优雅地扩展到高阶函数的情况，而无需更改。当将用户定义函数应用于某些实参时，形参被绑定到一个新的局部帧中这些实参的值（可能是函数）上。
 
-思考下面的示例，它实现了迭代改进的一般方法，并且可以用于计算[黄金比例](http://www.geom.uiuc.edu/~demo5337/s97b/art.htm)。黄金比例，通常称为“phi”，是一个接近 1.6 的数字，经常出现在自然、艺术和建筑中。
+思考下面的示例，它实现了迭代改进的一般方法，并且可以用于计算[黄金分割比例](http://www.geom.uiuc.edu/~demo5337/s97b/art.htm)。黄金比例，通常称为“phi”，是一个接近 1.6 的数字，经常出现在自然、艺术和建筑中。
+
+**迭代改进算法（iterative improvement algorithm）** 是以一个方程的解的 `guess` （猜测值）开始的（An iterative improvement algorithm begins with a `guess` of a solution to an equation.）。它反复调用一个 `update` 函数来改进该猜测值，并应用一个  `close` 函数来比较，检查当前的 `guess` 值是否“足够接近”正确值。
+
+```python
+>>> def improve(update, close, guess=1):
+        while not close(guess):
+            guess = update(guess)
+        return guess
+```
+
+这里的 `improve` 函数是一个重复求取精度的一般表达式。此函数没有指定要解决什么问题：这些细节留给作为参数传入的 `update` 和 `close` 函数去指定。
+
+黄金分割比例的最注明的性质为，它可以通过重复的使用任何正数的倒数加1来计算，并且它本身比自己的平方小1。于是我们可以将此性质表述为如下的 `improve` 函数，用以改进。
 
 ```python
 >>> def golden_update(guess):
         return 1/guess + 1
+  
 >>> def square_close_to_successor(guess):
         return approx_eq(guess * guess, guess + 1)
 ```
 
+如上，我们引入了对 `approx_eq` 函数的调用，如果它的参数大致相等，那么就会返回 `True`。为了实现 `approx_eq` 函数，我们可以将两个数字之间的差的绝对值与一个小的容差值（tolerance value）进行比较。
+
+```python
+>>> def approx_eq(x, y, tolerance=1e-15):
+        return abs(x - y) < tolerance
+```
+
+使用参数 `golden_update` 和 `square_close_to_successor` 调用 `improve` 函数会计算出黄金分割比例的有限近似值。
+
+```python
+>>> improve(golden_update, square_close_to_successor)
+1.6180339887498951
+```
+
+通过跟踪求值的步骤，我们可以得出这个值是怎样被计算出来的。首先，绑定了（三个）变量 `update` ， `close` 和 `guess` 的函数构建了一个局部帧，在 `improve` 函数的函数体中，名称 `close` 绑定到了（传入参数）`square_to_successor`，在 `guess` 的初始值上被调用。跟踪其余步骤可以查看计算黄金分割比例的计算过程。
+
+<img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220906154201123.png" alt="image-20220906154201123" style="zoom:80%;" />
+
+这个例子说明了计算机科学中的两个相关的大概念。第一，命名和函数可以允许我们抽象出大量的复杂度。虽然每个函数的定义都很简单，但由求值过程启动的计算过程却相当的复杂。第二，基于事实，我们拥有了非常通用的求值过程，小的组件可以组合成复杂的过程。知晓程序的解释过程使我们验证和检查我们创建（程序）的过程。
+
+与往常一样，我们新的通用方法 `improve` 需要测试来检查其正确性。黄金分割比例可以提供这样的测试，因为它也有一个精确的**闭式解（closed-form solution）**，我们可以将其与这个迭代结果进行比较。
+
+> 翻译加：什么是闭式解？
+>
+> 又称作解析解（Analytic expression），是可以用解析表达式来表达的解。 在数学上，如果一个方程或者方程组存在的某些解，是由有限次常见运算的组合给出的形式，则称该方程存在解析解。二次方程的根就是一个解析解的典型例子。在低年级数学的教学当中，解析解也被称为**公式解**。
+>
+> *节选自维基百科：https://zh.wikipedia.org/wiki/%E8%A7%A3%E6%9E%90%E8%A7%A3*
+
+```python
+>>> from math import sqrt
+>>> phi = 1/2 + sqrt(5)/2
+>>> def improve_test():
+        approx_phi = improve(golden_update, square_close_to_successor)
+        assert approx_eq(phi, approx_phi), 'phi differs from its approximation'
+      
+>>> improve_test()
+```
+
+对于这个测试，什么都没输出就是最好的消息：这意味着在 `assert` 语句成功执行后，`improve_test` 返回了`None` 。
+
+#### Defining Functions III: Nested Definitions（定义函数III：嵌套定义）
+
+上面的示例演示了将函数作为参数传递的能力如何显着增强了我们的编程语言的表达能力。每个通用的概念或方程都能映射为自己的小型函数，这一方式的一个负面效果是全局帧会被小型函数弄乱。另一个问题是我们限制于特定函数的签名
