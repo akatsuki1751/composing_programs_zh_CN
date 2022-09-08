@@ -1379,11 +1379,11 @@ result = square_successor(12)
 
 试想一条穿过点 $$(x, f(x))$$ 的直线与函数 $$f(x)$$ 在该点拥有相同的斜率。这样的直线我们称之为**切线（tangent）**，它的斜率我们称之为 $$f$$ 在 $$x$$ 处的**导数（derivative）**。
 
-这条直线的斜率是函数值变化量与函数参数变化量的比值，因此，将切线移动 $$f(x)$$ 就会得到切线函数在函数值等于 $$0$$ 时候 $$x$$ 的值（，这个值就是该函数方程的近似解）。（Hence, translating $$x$$ by $$f(x)$$ divided by the slope will give the argument value at which this tangent line touches 0.）
+这条直线的斜率是函数值变化量与函数参数变化量的比值，所以，按照 $$f(x)$$ 除以这个斜率来平移 $$x$$ ，就会得到切线到达 $$0$$ 时的 $$x$$ 值。（Hence, translating $$x$$ by $$f(x)$$ divided by the slope will give the argument value at which this tangent line touches 0.）
 
 ![newton](https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/newton.png)
 
-下面的 `newtown_update` 函数就表示切线函数值等于 0 时的（x 值）的计算过程。 函数用 $$f$$ 表示，函数的倒数用 $$df$$ 表示：
+下面的 `newtown_update` 改进算法函数就表示切线函数值等于 0 时的（x 值）的计算过程。 函数用 $$f$$ 表示，函数的导数用 $$df$$ 表示：
 
 ```python
 >>> def newton_update(f, df):
@@ -1392,5 +1392,239 @@ result = square_successor(12)
         return update
 ```
 
- 
+ 最终，我们可以就能够根据改进算法 `newton_update`  定义 `find_root` 函数。并比较 `f(x)` 是否接近 `0` 。
+
+```python
+>>> def find_zero(f, df):
+        def near_zero(x):
+            return approx_eq(f(x), 0)
+        return improve(newton_update(f, df), near_zero)
+```
+
+**求根（Computing Roots）**。使用牛顿法，我们可以算出 $$n$$ 次根。比如，$$x·x·x·x...x = a$$，$$x$$ 相乘 $$n$$ 次， 那么 $$a$$ 的 $$n$$ 次根是 $$x$$ 。
+
+- $$64$$ 的平方（二次方）根书是 $$8$$，因为 $$8·8 = 64$$。
+- $$64$$ 的立方（三次方）根是 $$4$$ ，因为 $$4·4·4 = 64$$ 。
+- $$64$$ 的六次方根是 $$2$$ ，因为$$2·2·2·2·2·2 = 64$$ 。
+
+我们可以使用牛顿法，根据下面的发下来求根：
+
+- $$64$$ 的平方根（写作 $$\sqrt{64}$$） 是 $$x^2 - 64 = 0$$ 时 $$x$$ 的值。
+- 一般地，$$a$$ 的 $$n$$ 次方根（写作 $$\sqrt[n]{64}$$）是 $$x^n - a = 0$$ 时 $$x$$ 的值。
+
+如果我们能过找到上面等式的一个零点，我们就能计算出其 $$n$$ 次根。通过绘制 $$n$$ 等于 2、3 和 6 以及 $$a$$ 等于 64 的曲线，我们可以直观地看到这个关系。
+
+![curves](https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/curves.png)
+
+我们首先通过定义函数 `f` 和它的导数 `df` 来实现函数 `squre_root` 。我们使用微积分中的已有知识： $$f(x)=x^2 + a$$ 的导函数为 $$df(x) = 2x$$。
+
+```python
+>>> def square_root_newton(a):
+        def f(x):
+            return x * x - a
+        def df(x):
+            return 2 * x
+        return find_zero(f, df)
+      
+>>> square_root_newton(64)
+8.0
+```
+
+推广到 $$n$$ 阶，我们可以得出：$$f(x) = x^n - a$$ 与它的导函数 $$f(x) = n·x^{n-1}$$ 。
+
+```python
+>>> def power(x, n):
+        """Return x * x * x * ... * x for x repeated n times."""
+        product, k = 1, 0
+        while k < n:
+            product, k = product * x, k + 1
+        return product
+>>> def nth_root_of_a(n, a):
+        def f(x):
+            return power(x, n) - a
+        def df(x):
+            return n * power(x, n-1)
+        return find_zero(f, df)
+>>> nth_root_of_a(2, 64)
+8.0
+>>> nth_root_of_a(3, 64)
+4.0
+>>> nth_root_of_a(6, 64)
+2.0
+```
+
+所有这些计算中的近似误差都可以通过将 `approx_eq` 中的公差更改为更小的数字来减小。
+
+当你使用牛顿法时，要注意它并不总是收敛（converge）的。`improve` 的初始猜测必须足够接近零，并且必须满足关于函数的各种条件。尽管有这个缺点，但牛顿法是求解可微方程的一种强大的通用计算方法。现代计算机技术中的对数和大整数除法的快速算法，采用了该方法的变体。
+
+#### Curring（柯里化）
+
+我们可以使用高阶函数将一个接受多个参数的函数转换为一个函数链（a chain of functions），每个函数接受一个参数。更具体地说，给定一个函数 `f(x, y)` ，我们可以定义一个函数 `g` ，使得 `g(x)(y)`  等价于 `f(x, y)`。z在这里，`g` 是一个高阶函数，它接受单个参数 `x` 并返回另一个接受单个参数 `y`的函数。这种转换称为**柯里化（Curring）**。
+
+例如，我们可以定义 pow 函数的柯里化版本：
+
+```python
+>>> def curried_pow(x):
+        def h(y):
+            return pow(x, y)
+        return h
+>>> curried_pow(2)(3)
+8
+```
+
+一些编程语言，例如 Haskell，只允许使用单个参数的函数，因此程序员必须对所有多参数过程进行柯里化。在 Python 等更通用的语言中，当我们需要一个只接受单个参数的函数时，柯里化就很有用。例如，`map` 模式（*map* pattern）就可以将单参数函数应用于一串值。在下个章节中，我们将看到更通用的 `map` 模式的示例，但现在，我们可以在函数中实现该模式：
+
+```python
+>>> def map_to_range(start, end, f):
+        while start < end:
+            print(f(start))
+            start = start + 1
+```
+
+我们可以使用 `map_to_range` 和 `curried_pow` 来计算 2 的前十次方，而不是专门编写一个函数来这样做：
+
+```python
+>>> map_to_range(0, 10, curried_pow(2))
+1
+2
+4
+8
+16
+32
+64
+128
+256
+512
+```
+
+我们可以类似地使用相同的两个函数来计算其他数字的幂。 柯里化允许我们这样做，而无需为我们希望计算其幂的每个数字编写特定的函数。
+
+在上面的例子中，我们手动对 `pow` 函数进行了柯里化变换，得到了 `curried_pow` 。相反，我们可以定义函数来自动化柯里化，以及逆柯里化变换（*uncurrying* transformation）：
+
+```python
+>>> def curry2(f):
+        """Return a curried version of the given two-argument function."""
+        def g(x):
+            def h(y):
+                return f(x, y)
+            return h
+        return g
+>>> def uncurry2(g):
+        """Return a two-argument version of the given curried function."""
+        def f(x, y):
+            return g(x)(y)
+        return f
+>>> pow_curried = curry2(pow)
+>>> pow_curried(2)(5)
+32
+>>> map_to_range(0, 10, pow_curried(2))
+1
+2
+4
+8
+16
+32
+64
+128
+256
+512
+```
+
+curry2 函数接受一个双参数函数 `f` 并返回一个单参数函数 `g`。当 `g`应用于参数 `x` 时，它返回一个单参数函数 `h` 。当 `h` 应用于 `y` 时，它调用 `f(x, y)`。因此，`curry2(f)(x)(y)` 等价于 `f(x, y)` 。`uncurry2` 函数反转了柯里化变换，因此 `uncurry2(curry2(f))` 等价于 `f` 。
+
+```python
+>>> uncurry2(pow_curried)(2, 5)
+32
+```
+
+#### Lambda Expressions（Lambda 表达式）
+
+到目前为止，每当我们想要定义一个新函数时，我们都需要给它一个名字。 但是对于其他类型的表达式，我们不需要将中间值与名称相关联。 也就是说，我们可以计算 `a * b + c * d` 而不必命名子表达式 `a*b` 或 `c*d` 或完整的表达式。 在 Python 中，我们可以使用 lambda 表达式动态创建函数，该表达式计算为未命名的函数。 一个 lambda 表达式的计算结果是一个函数，它有一个作为主体的返回表达式。 并且不允许使用赋值和控制语句。
+
+```python
+>>> def compose1(f, g):
+        return lambda x: f(g(x))
+```
+
+我们可以使用如下构造的对应的英文句子来理解 lambda 表达式的结构：
+
+```python
+     lambda            x            :          f(g(x))
+"A function that    takes x    and returns     f(g(x))"
+```
+
+lambda 表达式的结果称为 lambda 函数。它没有固有名称（因此 Python 打印 `<lambda>` 作为名称），但除此之外它的行为与任何其他函数一模一样。
+
+```python
+>>> s = lambda x: x * x
+>>> s
+<function <lambda> at 0xf3f490>
+>>> s(12)
+144
+```
+
+在环境图中，lambda 表达式的结果也是一个函数，以希腊字母 λ （lambda）命名。我们的 `compose` 示例可以用 lambda 表达式表达出来：
+
+```python
+def compose1(f, g):
+    return lambda x: f(g(x))
+
+f = compose1(lambda x: x * x,
+             lambda y: y + 1)
+
+result = f(12)
+```
+
+<img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220909015232945.png" alt="image-20220909015232945" style="zoom:80%;" />
+
+一些程序员发现，从lambda表达式中使用未命名的函数更短、更直接。然而，尽管复合lambda表达式很简洁，但它是出了名的难以辨认。下面的定义是正确的，但是许多程序员很难快速理解它。
+
+```python
+>>> compose1 = lambda f,g: lambda x: f(g(x))
+```
+
+一般来说，Python 风格更喜欢显式 `def` 语句而不是lambda 表达式，但在需要一个简单函数作为参数或返回值的情况下允许使用它们。
+
+这样的规则只是指导方针；你可以随心所欲地编程。然而，在编写程序时，要考虑到有一天可能会阅读你的程序的受众。当你的程序容易理解时，你就帮了那些人一个忙。
+
+术语lambda 是一个历史上的偶然事件，它源于书面数学表示法的不兼容性和早期类型设置系统的约束。
+
+> 使用lambda 引入过程/函数似乎有点反常。这种符号可以追溯到阿朗佐·丘奇（Alonzo Church），他在20世纪30年代开始使用”帽子“符号；他把平方函数写成 “ŷ. y × y” 。但是沮丧的是，印刷工人将帽子移到参数的左边，并将其改为大写的lambda : “Λy. y × y”；从这里，大写的lambda 变为小写，就是现在我们看到样式了，在数学书中是“λy. y×y”。在Lisp 中是`(lambda (y) (* y y))`。
+>
+> —Peter Norvig (norvig.com/lispy2.html)
+
+尽管有着不同寻常的词源，lambda 表达式和对应的函数应用程序形式语言lambda 微积分，都是远远超出 Python 编程社区共享的基本计算机科学概念。我们将在第 3 章中研究解释器的设计时重新讨论这个问题。
+
+#### Abstractions and First-Class Functions（抽象和一等函数）
+
+在本节开始时，我们注意到用户定义函数是一种至关重要的抽象机制，因为它们允许我们将一般的计算方法表示为编程语言中的显式元素。现在我们已经看到了高阶函数如何允许我们操作这些通用方法来创建进一步的抽象。
+
+作为程序员，我们应该留意识别程序中的底层抽象，并在它们的基础上进行（进一步的）抽象构建，并将它们一般化，以创建更强大的抽象。这并不是说我们应该总是以最抽象的方式编写程序；专业的程序员知道如何选择适合的抽象级别。但重要的是能够从这些抽象的角度来进行思考，这样我们就能在新的上下文中使用它们了。高阶函数的意义在于，它使我们能够在编程语言中显式地将这些抽象表示为元素，这样就可以像处理其他计算元素一样来处理它们了。
+
+一般而言，编程语言对可操作计算元素的处理方式施加了限制。限制最少的元素被称为一等元素。一等元素的一些 “权利和特权” 是：
+
+1. 它们可以绑定到名称。
+2. 它们可以作为参数向函数传递。
+3. 它们可以作为函数的返回值返回。
+4. 它们可以包含在数据结构中。
+
+Python 授予函数完全的一等地位，由此带来的表达能力的提升是巨大的。
+
+#### Function Decorators（函数装饰器）
+
+Python 提供了特殊的语法来应用高阶函数作为执行 `def` 语句的一部分，称为装饰器（decorator）。最常见的例子是用来追踪：
+
+```python
+>>> def trace(fn):
+        def wrapped(x):
+            print('-> ', fn, '(', x, ')')
+            return fn(x)
+        return wrapped
+>>> @trace
+    def triple(x):
+        return 3 * x
+>>> triple(12)
+->  <function triple at 0x102a39848> ( 12 )
+36
+```
 
