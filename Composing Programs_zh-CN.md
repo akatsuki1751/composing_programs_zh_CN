@@ -1316,4 +1316,81 @@ result = sqrt(256)
 
 ####  Functions as Returned Values（函数作为返回值）
 
-程序可以通过创建返回值本身就是函数的函数以获得更多的表现力。
+程序可以通过创建返回值本身就是函数的函数以获得更多的表现力。带有词法作用域的编程语言的一个重要特性就是，局部定义函数在它们返回时仍旧持有所关联的环境。下面的例子展示了这一特性的作用。
+
+一旦定义了许多简单的函数，函数**组合（composition）**就成为编程语言中的一种自然的组合方法。也就是说，给定两个函数 `f(x)` 和 `g(x)`，我们可能想要定义 `h(x) = f(g(x))` 。我们可以使用我们现有的工具来定义函数组合：
+
+```python
+>>> def compose1(f, g):
+        def h(x):
+            return f(g(x))
+        return h
+```
+
+这个例子的环境关系图显示了即使存在冲突的名称时候， `f` 和 `g` 是如何被正确解析的。
+
+```python
+def square(x):
+    return x * x
+
+def successor(x):
+    return x + 1
+
+def compose1(f, g):
+    def h(x):
+        return f(g(x))
+    return h
+
+def f(x):
+    """Never called."""
+    return -x
+
+square_successor = compose1(square, successor)
+result = square_successor(12)
+```
+
+<img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220908174911571.png" alt="image-20220908174911571" style="zoom:80%;" />
+
+`compose1` 中的1表示这个组合的函数只有一个参数。这个命名惯例不是解释器强制要求的；1只是函数名的一部分而已。
+
+在这一点上，我们开始观察我们花费努力精确定义计算环境模型的好处：即获得不需要修改环境模型就可以解释返回函数的能力。（At this point, we begin to observe the benefits of our effort to define precisely the environment model of computation. No modification to our environment model is required to explain our ability to return functions in this way.）
+
+#### Example : Newton's Mehod（示例：牛顿法）
+
+这个扩展的示例展示了函数返回值和局部定义如何协同工作，以简洁地表达一般的思想。我们将实现一种广泛用于机器学习、科学计算、硬件设计和优化的算法。
+
+**牛顿法（Newton's method）**是一种经典的迭代方法，用于查找返回值为 0 的数学函数的参数。这些值（参数）称为函数的**零点（Zeros）**。找到函数的零点通常等同于解决了其他一些有趣的问题，例如求平方根。
+
+在我们继续之前，有一个激励人心的评论说到：我们很容易想当然地认为我们知道如何计算平方根。不只是Python，你的手机、网页浏览器或袖珍计算器都可以为你做到这一点。然而，学习计算机科学的一部分是理解这样的量如如何进行计算的，此处介绍的一般方法适用于求解 Python 内置方程之外的一大类方程。
+
+牛顿法是一种迭代改进算法：它会对所有**可微（differentiable）**函数的零点的猜测值进行改进，这意味着它可以在任意点用直线进行近似处理。牛顿的方法遵循这些线性近似（Linear approximations）来找到函数零点。
+
+> 翻译注：
+>
+> 牛顿法的视频介绍：https://www.bilibili.com/video/BV1Nt411T7HT?vd_source=a98d485f6a1d9dd779d8dd56de5549f6
+>
+> 
+>
+> 牛顿法求根公式，下标 n 一般为改进的次数：
+> $$
+> x_{n+1} = x_n - \frac{f(x_n)}{f'(x_n)}
+> $$
+> 这个公式很好推，使用点斜式就能很轻松推出来。
+
+试想一条穿过点 $$(x, f(x))$$ 的直线与函数 $$f(x)$$ 在该点拥有相同的斜率。这样的直线我们称之为**切线（tangent）**，它的斜率我们称之为 $$f$$ 在 $$x$$ 处的**导数（derivative）**。
+
+这条直线的斜率是函数值变化量与函数参数变化量的比值，因此，将切线移动 $$f(x)$$ 就会得到切线函数在函数值等于 $$0$$ 时候 $$x$$ 的值（，这个值就是该函数方程的近似解）。（Hence, translating $$x$$ by $$f(x)$$ divided by the slope will give the argument value at which this tangent line touches 0.）
+
+![newton](https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/newton.png)
+
+下面的 `newtown_update` 函数就表示切线函数值等于 0 时的（x 值）的计算过程。 函数用 $$f$$ 表示，函数的倒数用 $$df$$ 表示：
+
+```python
+>>> def newton_update(f, df):
+        def update(x):
+            return x - f(x) / df(x)
+        return update
+```
+
+ 
+
