@@ -18,9 +18,9 @@
 >
 > *我第一次做翻译，是为了实践费曼学习法，再加之CS61A 的名声如雷灌耳，这次终于下定决心，打算自己一边学习，一边翻译下此书，若发现问题或者想进行探讨，请发送邮件到 yuzu1005@qq.com*
 
+# Chapter 1: Building Abstractions with Functions
 
-
-## Lecture 1 : Function
+## Lecture 2 : Functions
 
 ### Elements of Programming（程序的基本要素）
 
@@ -709,7 +709,7 @@ operator     operand 0     operand 1
 
 作为一条准则，函数体中使用的大多数数据值应该表示为命名参数的默认值，以便于检查它们，并可以由函数调用者更改。一些不变的值，如基本常数 `k` ，可以在函数体或全局帧中绑定。
 
-## Lecture 2 : Control
+## Lecture 3 : Control
 
 ### Control（控制）
 
@@ -1037,7 +1037,7 @@ python3 -m doctest <python_source_file>
 
 有效测试的关键是在实现新功能后立即编写（和运行）测试。甚至在实现之前编写一些测试也是一个很好的实践，以便在脑海中有一些示例输入和输出。应用于单个函数的测试称为**单元测试（unit test）**。详尽的单元测试是优秀程序设计的一个标志。
 
-## Lecture 3 : Higher-Order Functions & Lecture 4 : Environments & Lecture 8 : Function Examples
+## Lecture 4 : Higher-Order Functions & Lecture 5 : Environments & Lecture 9 : Function Examples
 
 ### Higher-Order Functions（高阶函数）
 
@@ -1658,7 +1658,7 @@ Python 提供了特殊的语法来应用高阶函数作为执行 `def` 语句的
 
 > 原文链接http://programmingbits.pythonblogs.com/27_programmingbits/archive/50_function_decorators.html，已经失效。
 
-## Lecture 4 : Recursion & Lecture 5 : Tree Recursion
+## Lecture 6 : Recursion & Lecture 7 : Tree Recursion
 
 ### 递归函数（Resursive Functions） 
 
@@ -1973,7 +1973,9 @@ result = fib(6)
 
 在没有递归的情况下实现此功能将涉及更多。鼓励有兴趣的读者尝试。
 
+# Chapter 2: Building Abstractions with Data
 
+## Lecture 10 : Container
 
-
+### 简介（Introduction）
 
