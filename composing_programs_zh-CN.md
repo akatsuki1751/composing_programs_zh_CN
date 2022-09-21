@@ -2089,5 +2089,54 @@ True
 - `numer(x)` 返回有理数 `x` 的分子。
 - `denom(x)` 返回有理数 `x` 的分母。
 
+我们在使用一种强大的程序设计策略：*心想事成（wishful thinking）*。我们没有说明有理数怎么表示，也没有说明 `numer` ， `denom` 和 `rational` 这些函数的具体实现。即便如此，如果我们确实定义了这三个函数，那么，我们就可以对有理数进行加、乘、打印和检验。
 
+```python
+>>> def add_rationals(x, y):
+        nx, dx = numer(x), denom(x)
+        ny, dy = numer(y), denom(y)
+        return rational(nx * dy + ny * dx, dx * dy)
+    
+>>> def mul_rationals(x, y):
+        return rational(numer(x) * numer(y), denom(x) * denom(y))
+    
+>>> def print_rational(x):
+        print(numer(x), '/', denom(x))
+        
+>>> def rationals_are_equal(x, y):
+        return numer(x) * denom(y) == numer(y) * denom(x)
+```
+
+现在我们拥有了选择器函数 `numer` 和 `denom`， 与构造器函数 `rational` （共同）定义的操作，但是到目前为止，我们还没有定义这些函数。我们需要以某种方式来将分子和分母“粘合”为一个单元。
+
+#### 组合（Pairs）
+
+为了使我们能够实现数据抽象的具体级别，Python 提供了一种称为 `list` （列表）的复合结构，它可以通过将表达式放在用逗号分隔的方括号中来构造。这样的表达式称为**列表字面量（list literal）**。
+
+```python
+>>> [10, 20]
+[10, 20]
+```
+
+有两种获访问列表元素的方法。第一种是我们熟悉的**多重赋值（multiple assignment）**方法，它将列表解构为元素，并将每个元素绑定到不同的名称。
+
+```python
+>>> pair = [10, 20]
+>>> pair
+[10, 20]
+>>> x, y = pair
+>>> x
+10
+>>> y
+20
+```
+
+第二种访问列表元素的方法是使用**元素选择操作符（element selection operator）**，也是一个方括号。与列表字面量不同，直接跟在另一个表达式后面的方括号表达式不会求值为列表值，而是从前一个表达式的值中选择一个元素。
+
+```python
+>>> pair[0]
+10
+>>> pair[1]
+20
+```
 
