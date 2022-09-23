@@ -2107,7 +2107,7 @@ True
         return numer(x) * denom(y) == numer(y) * denom(x)
 ```
 
-现在我们拥有了选择器函数 `numer` 和 `denom`， 与构造器函数 `rational` （共同）定义的操作，但是到目前为止，我们还没有定义这些函数。我们需要以某种方式来将分子和分母“粘合”为一个单元。
+现在我们拥有了选择器函数 `numer` 和 `denom`， 与构造函数 `rational` （共同）定义的操作，但是到目前为止，我们还没有定义这些函数。我们需要以某种方式来将分子和分母“粘合”为一个单元。
 
 #### 组合（Pairs）
 
@@ -2131,7 +2131,7 @@ True
 20
 ```
 
-第二种访问列表元素的方法是使用**元素选择操作符（element selection operator）**，也是一个方括号。与列表字面量不同，直接跟在另一个表达式后面的方括号表达式不会求值为列表值，而是从前一个表达式的值中选择一个元素。
+第二种访问列表元素的方法是使用**元素选择操作符（element selection operator，也叫下标运算符）**，也是一个方括号。与列表字面量不同，直接跟在另一个表达式后面的方括号表达式不会求值为列表，而是从前一个表达式的值中选择一个元素。
 
 ```python
 >>> pair[0]
@@ -2140,3 +2140,62 @@ True
 20
 ```
 
+Python 中的列表（以及大多数其他编程语言中的序列）的索引是从 0 开始（0-indexed）的，意思是索引 0 选择到的是第一个元素，索引 1 是第二个，然后依次类推。我们对这个下标惯例的直觉是，下标表示一个元素距离列表开头元素的距离。
+
+与元素选择运算符等效的函数为 `getitem` ，该函数的索引也是从 0 开始，在列表元素中进行选择的。
+
+```python
+>>> from operator import getitem
+>>> getitem(pair, 0)
+10
+>>> getitem(pair, 1)
+20
+```
+
+两个元素的列表并不是 Python 中表示组合的唯一方法。任何表示将两个元素“绑定”为整个元素的方法都可以认为是一种组合。列表是这样做的常用方法。列表能包含的元素也不止两个，我们会在本章的后续部分进行探讨。
+
+**有理数的表示（Representing Rational Numbers）** 。我们现在可以将有理数表述为两个整数的组合：一个为分子，一个为分母。
+
+```python
+>>> def rational(n, d):
+        return [n, d]
+    
+>>> def numer(x):
+        return x[0]
+    
+>>> def denom(x):
+        return x[1]
+```
+
+与先前定义的数学运算相结合，我们就可以使用定义的这些函数来操作有理数了。
+
+```python
+>>> half = rational(1, 2)
+>>> print_rational(half)
+1 / 2
+>>> third = rational(1, 3)
+>>> print_rational(mul_rationals(half, third))
+1 / 6
+>>> print_rational(add_rationals(third, third))
+6 / 9
+```
+
+上面的示例中，我们的有理数的实现并没有将有理数简化为最简式。我们可以通过更改 `rational` 函数的实现来弥补这个缺陷。如果有用来计算两整数的**最大公约数（greatest common denominator）**的函数，在构建组合之前，我们就可以用该函数来将分子和分母化为最简式。与许多有用的工具一样，Python 库中已经存在这样的函数。
+
+```python
+>>> from fractions import gcd
+>>> def rational(n, d):
+        g = gcd(n, d)
+        return (n//g, d//g)
+```
+
+地板除法运算符 `//` 表示整数除法，作用为舍入除法结果的小数部分，只保留整数部分。因为我们知道 `g` 能整除 `n` 和 `d`，在这种情况下整数除法是准确的。这个修改了的 `rational` 函数实现保证了有理数的表达式为最简式。
+
+```python
+>>> print_rational(add_rationals(third, third))
+2 / 3
+```
+
+这种改进是通过更改构造函数而不更改任何实现实际算术运算的函数来实现的。
+
+#### 抽象界限（Abstraction Barriers）
