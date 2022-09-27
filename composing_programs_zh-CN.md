@@ -2710,3 +2710,158 @@ nested = [[1, 2], [],
 
 <img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220927211040605.png" alt="image-20220927211040605" style="zoom:67%;" />
 
+在列表中嵌套列表会引入复杂度。树是一种基本的数据抽象，它对分层值的结构和操作施加了规律性。树有一个根标签和一系列的分支。一棵树的每一根树枝都是一棵树。没有树枝的树叫做叶子。树中包含的任何树都称为该树的子树（例如分支的分支）。树的每一个子树的根称为树中的节点。
+
+树的数据抽象由构造函数 `tree` 、选择器 `label` 和分支 `branches` 组成。我们从一个简化版本的树开始。
+
+```python
+>>> def tree(root_label, branches=[]):
+        for branch in branches:
+            assert is_tree(branch), 'branches must be trees'
+        return [root_label] + list(branches)
+      
+>>> def label(tree):
+        return tree[0]
+  
+>>> def branches(tree):
+        return tree[1:]
+```
+
+一棵树只有当它有一个根标签并且所有分支也是树时才是**良构的（well-formed）**。`is_tree` 函数在 `tree` 构造函数中应用，以验证所有分支是否都是良构的。
+
+```python
+>>> def is_tree(tree):
+        if type(tree) != list or len(tree) < 1:
+            return False
+        for branch in branches(tree):
+            if not is_tree(branch):
+                return False
+        return True
+```
+
+`is_leaf` 函数检查树是否有分支。
+
+```python
+>>> def is_leaf(tree):
+        return not branches(tree)
+```
+
+树可以通过嵌套表达式构造。下面的树 `t` 有根标签 3 和两个分支。
+
+```python
+>>> t = tree(3, [tree(1), tree(2, [tree(1), tree(1)])])
+>>> t
+[3, [1], [2, [1], [1]]]
+>>> label(t)
+3
+>>> branches(t)
+[[1], [2, [1], [1]]]
+>>> label(branches(t)[1])
+2
+>>> is_leaf(t)
+False
+>>> is_leaf(branches(t)[0])
+True
+```
+
+**树递归函数（Tree-recursive functions）**可以用来构造树。例如，第 `n` 个斐波那契树的根标签是第 `n` 个斐波那契数，对于 `n > 1` 的情况，两个分支也是斐波那契树。斐波那契树说明了斐波那契数的树递归计算。
+
+```python
+>>> def fib_tree(n):
+        if n == 0 or n == 1:
+            return tree(n)
+        else:
+            left, right = fib_tree(n-2), fib_tree(n-1)
+            fib_n = label(left) + label(right)
+            return tree(fib_n, [left, right])
+          
+>>> fib_tree(5)
+[5, [2, [1], [1, [0], [1]]], [3, [1, [0], [1]], [2, [1], [1, [0], [1]]]]]
+```
+
+树递归函数也用于处理树。例如，`count_leaves` 函数可以计算树的叶子数。
+
+```python
+>>> def count_leaves(tree):
+      if is_leaf(tree):
+          return 1
+      else:
+          branch_counts = [count_leaves(b) for b in branches(tree)]
+          return sum(branch_counts)
+        
+>>> count_leaves(fib_tree(5))
+8
+```
+
+**分割树（Partition trees）**。树还可以用来表示整数的分割。使用大小为 `m` 的部分的 `n` 的分割树是二叉树（两个分支），表示在计算过程中所采取的选择。在非子叶分割树中：
+
+- 左（索引 0）分支包含使用至少一个 `m` 对 `n` 进行分割的所有方式，
+- 右（索引 1）分支包含使用最多 `m-1` 部分的分割，并且
+- 根标签是 `m` 。
+
+```python
+>>> def partition_tree(n, m):
+        """Return a partition tree of n using parts of up to m."""
+        if n == 0:
+            return tree(True)
+        elif n < 0 or m == 0:
+            return tree(False)
+        else:
+            left = partition_tree(n-m, m)
+            right = partition_tree(n, m-1)
+            return tree(m, [left, right])
+          
+>>> partition_tree(2, 2)
+[2, [True], [1, [1, [True], [False]], [False]]]
+```
+
+从分割树中打印分割是另一个树递归过程，它遍历树，并将每个分割构造为一个列表。每当到达值为 `true` 的子叶时，就会打印分割。
+
+```python
+>>> def print_parts(tree, partition=[]):
+        if is_leaf(tree):
+            if label(tree):
+                print(' + '.join(partition))
+        else:
+            left, right = branches(tree)
+            m = str(label(tree))
+            print_parts(left, partition + [m])
+            print_parts(right, partition)
+            
+>>> print_parts(partition_tree(6, 4))
+4 + 2
+4 + 1 + 1
+3 + 3
+3 + 2 + 1
+3 + 1 + 1 + 1
+2 + 2 + 2
+2 + 2 + 1 + 1
+2 + 1 + 1 + 1 + 1
+1 + 1 + 1 + 1 + 1 + 1
+```
+
+切片也可以用在树上。例如，我们可能想对树中的分支数量进行限制。二叉树要么是一个叶子，要么是最多两个二叉树的序列。一种称为**二值化（binarization）**的常见树形转换，是通过将相邻分支组合在一起，从原始树计算二叉树。
+
+```python
+>>> def right_binarize(tree):
+        """Construct a right-branching binary tree."""
+        if is_leaf(tree):
+            return tree
+        if len(tree) > 2:
+            tree = [tree[0], tree[1:]]
+        return [right_binarize(b) for b in tree]
+      
+>>> right_binarize([1, 2, 3, 4, 5, 6, 7])
+[1, [2, [3, [4, [5, [6, 7]]]]]]
+```
+
+#### 链表（Linked Lists）
+
+到目前为止，我们只能使用原生类型来表示序列。但是，我们也可以开发 Python 中没有内置的序列表示方式。由**嵌套对（nested pairs）**构造的序列的一种常见表示称为**链表（linked list）**。下面的环境图演示了包含1、2、3和4的四元素序列的链表表示。
+
+```python
+four = [1, [2, [3, [4, 'empty']]]]
+```
+
+<img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220927215705235.png" alt="image-20220927215705235" style="zoom:80%;" />
+
