@@ -2524,4 +2524,189 @@ Go Bears!
 [4, 6, 8, 8, 12, 10, 16, 12, 12]
 ```
 
-**高阶函数（Higher-Order Functions）**。
+**高阶函数（Higher-Order Functions）**。我们在序列处理中观察到的常见模式可以用**高阶函数（higher-order functions）**表示。首先，对序列中每个元素的表达式求值可以通过对每个元素应用函数来表示。
+
+```python
+>>> def apply_to_all(map_fn, s):
+        return [map_fn(x) for x in s]
+```
+
+通过对每个元素应用函数，只选择表达式为 `true` 的元素。
+
+```python
+>>> def keep_if(filter_fn, s):
+        return [x for x in s if filter_fn(x)]
+```
+
+最后，许多形式的聚合可以表示为重复应用一个两个参数的函数到到目前为止的 `reduced` 值，然后依次应用每个元素。
+
+```python
+>>> def reduce(reduce_fn, s, initial):
+        reduced = initial
+        for x in s:
+            reduced = reduce_fn(reduced, x)
+        return reduced
+```
+
+例如， `reduced`  可用于将一个序列的所有元素相乘。使用 `mul` 作为 `reduce_fn`， 1 作为初始值，`reduce` 可以用于将一个数字序列相乘。
+
+```python
+>>> reduce(mul, [2, 4, 8], 1)
+64
+```
+
+我们也可以用这些高阶函数找到完美数。
+
+```python
+>>> def divisors_of(n):
+        divides_n = lambda x: n % x == 0
+        return [1] + keep_if(divides_n, range(2, n))
+    
+>>> divisors_of(12)
+[1, 2, 3, 4, 6]
+>>> from operator import add
+>>> def sum_of_divisors(n):
+        return reduce(add, divisors_of(n), 0)
+  
+>>> def perfect(n):
+        return sum_of_divisors(n) == n
+  
+>>> keep_if(perfect, range(1, 1000))
+[1, 6, 28, 496]
+```
+
+**惯用名称（Conventional Names）**。在计算机科学社区，`apply_to_all` 更常用的名称是 `map`，  `keep_if` 更常用的名称是 `filter` 。在 Python 中，内置的 `map` 和 `filter` 是上面描述的两个函数的**泛化（generalizations）**，并不会返回列表。这些函数会在第四章中进行探讨。上面的定义等同于将 `list` 构造函数应用于内置的 `map` 和 `filter` 调用的结果。
+
+```python
+>>> apply_to_all = lambda map_fn, s: list(map(map_fn, s))
+>>> keep_if = lambda filter_fn, s: list(filter(filter_fn, s))
+```
+
+`reduce` 函数内置于 Python 标准库的 `functools` 模块中。在该版本中， `initial` 参数是可选的。
+
+```python
+>>> from functools import reduce
+>>> from operator import mul
+>>> def product(s):
+        return reduce(mul, s)
+  
+>>> product([1, 2, 3, 4, 5])
+120
+```
+
+在Python程序中，直接使用列表推导式比使用高阶函数更常见，但这两种序列处理方法都被广泛使用。
+
+#### 序列抽象（Sequence Abstraction）
+
+我们介绍了两种满足序列抽象的原始数据类型：列表（list）和范围（range）。两者都满足本节开始时的条件：长度和元素选择。Python 还包括两个序列类型的行为，它们扩展了**序列抽象（Sequence Abstraction）**。
+
+**成员（Membership）**。可以测试一个值是否为序列的成员。Python 拥有两个操作符 `in` 和 `not in` ，取决于元素是否在序列中出现而求值为 `True` 和 `False` 。
+
+```python
+>>> digits
+[1, 8, 2, 8]
+>>> 2 in digits
+True
+>>> 1828 not in digits
+True
+```
+
+**切片（Slicing）**。序列包含更小的序列。序列的**切片（slice）**是原序列的任何连续一段，由一对整数指定。与 `range` 构造函数一样，第一个整数表示切片的起始索引，第二个整数表示结束索引加一。
+
+在 Python 中，序列切片的表达方式类似于元素选择，使用方括号。一个冒号分隔开始和结束索引。任何被忽略的索引界限假定为一个极值：0 表示起始索引，序列的长度表示结束索引。
+
+```python
+>>> digits[0:2]
+[1, 8]
+>>> digits[1:]
+[8, 2, 8]
+```
+
+列举 Python 序列抽象的这些额外行为，让我们有机会反思什么是一般有用的数据抽象。抽象的丰富性（即它包含多少行为）会产生结果。对于抽象的用户来说，抽象附加的行为可能很有帮助。另一方面，使用新数据类型满足抽象的丰富要求具有挑战性。丰富抽象性的另一个负面后果，就是用户需要花费更长的时间来学习。
+
+序列具有丰富的抽象，因为它们在计算中是如此普遍，学习一些复杂的行为是合理的。一般来说，大多数用户定义的抽象都应该尽可能简单。
+
+**拓展阅读（Further Reading）**。切片表示法允许各种特殊情况，例如负的起始值、结束值和步长。完整的描述在[Dive Into Python 3中名为切片列表的小节](https://diveintopython3.net/native-datatypes.html)中。在本章中，我们将只使用上面描述的基本特性。
+
+#### 字符串（Strings）
+
+对于计算机科学来说，文本值可能比数字更为基础。举个例子，Python 程序是以文本的形式编写和存储的。在Python 中，文本的原生数据类型称为字符串，对应于构造函数 `str` 。
+
+在 Python 中如何表示、表达和操作字符串有很多细节。字符串是**丰富抽象（rich abstraction）**的另一个例子，它需要程序员付出大量的努力才能掌握。本节简要介绍了基本的字符串行为。
+
+字符串字面量可以表示任意文本，用单引号或双引号括起来。
+
+```python
+>>> 'I am string!'
+'I am string!'
+>>> "I've got an apostrophe"
+"I've got an apostrophe"
+>>> '您好'
+'您好'
+```
+
+我们已经在代码中见到过字符串，如文档字符串、`print` 函数调用和 `assert` 断言语句中的错误消息。
+
+字符串满足我们在本节开头介绍的序列的两个基本条件：它们具有长度并且它们支持元素选择。
+
+```python
+>>> city = 'Berkeley'
+>>> len(city)
+8
+>>> city[3]
+'k'
+```
+
+字符串的元素本身就是只有一个字符的字符串。字符是字母表、标点符号或其他符号中的任何单个字母。与许多其他编程语言不同，Python 没有单独的字符类型；任何文本都是字符串，表示单个字符的字符串的长度为 1 。
+
+像列表一样，字符串也可以通过加法和乘法组合。
+
+```python
+>>> 'Berkeley' + ', CA'
+'Berkeley, CA'
+>>> 'Shabu ' * 2
+'Shabu Shabu '
+```
+
+**成员（Membership）**。字符串的行为不同于 Python 中的其他序列类型。字符串抽象不符合我们为列表和范围描述的完整序列抽象。特别是，成员操作符 `in` 应用于字符串，但与应用于序列时的行为完全不同。它匹配子字符串而不是元素。
+
+```python
+>>> 'here' in "Where's Waldo?"
+True
+```
+
+**多行文本（Multiline Literals）**。字符串不只限于单行。三引号分隔跨越多行的字符串字面量。我们已经在文档字符串中广泛地使用了这种三重引号。
+
+```python
+>>> """The Zen of Python
+claims, Readability counts.
+Read more: import this."""
+'The Zen of Python\nclaims, "Readability counts."\nRead more: import this.'
+```
+
+在上面打印的结果中，`\n` （发音为“反斜杠 en”）是表示另起一行的单个元素。尽管它以两个字符（反斜杠和“n”）的形式出现，但出于长度和元素选择的考虑，它被认为是单个字符。
+
+**字符串强制类型转换（String Coercion）**。通过调用 `str` 构造函数，并将对象值作为参数，可以从 Python 中的任何对象创建字符串。字符串的这个特性，对于从各种类型的对象构造描述性字符串非常有用。
+
+```python
+>>> str(2) + ' is an element of ' + str(digits)
+'2 is an element of [1, 8, 2, 8]'
+```
+
+**拓展阅读**。在计算机中编码文本是一个复杂的话题。在本章中，我们将抽象出字符串表示的细节。然而，对于许多应用程序来说，计算机如何编码字符串的具体细节是必不可少的知识。[Dive Into Python 3 的字符串章节](https://diveintopython3.net/strings.html)提供了字符编码和 Unicode 的描述。
+
+#### 树（Trees）
+
+我们**使用列表作为其他列表的元素**的能力，在编程语言中提供了一种新的组合方法。这种能力称为数据类型的**闭包属性（closure property）**。通常，如果组合的结果本身可以使用相同的方法组合，则组合数据值的方法具有闭包属性。在任何组合方式中，闭合都是权力的关键，因为它可以让我们创建出**分层结构（hierarchical structures）**—— 由部分组成的结构，而结构本身又由更小的部分组成，以此类推。
+
+我们可以使用 “框-指针表示法” 在环境关系图中可将列表可视化。列表被描述为包含列表元素的相邻框。诸如数字、字符串、布尔值和 `None` 等基本值出现在作为元素的框中。复合值（例如函数值和其他列表）由箭头指示。
+
+```python
+one_two = [1, 2]
+nested = [[1, 2], [],
+          [[3, False, None],
+           [4, lambda: 5]]]
+```
+
+<img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220927211040605.png" alt="image-20220927211040605" style="zoom:67%;" />
+
