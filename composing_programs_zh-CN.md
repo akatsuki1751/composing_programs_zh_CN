@@ -2050,7 +2050,7 @@ True
 
 > *Dive Into Python 3* 的中文版地址：http://www.ttlsa.com/docs/dive-into-python3/
 
-## Lecture : Data Abstraction
+## Lecture 11 : Data Abstraction
 
 ### 数据抽象（Data Abstraction）
 
@@ -2198,4 +2198,330 @@ Python 中的列表（以及大多数其他编程语言中的序列）的索引�
 
 这种改进是通过更改构造函数而不更改任何实现实际算术运算的函数来实现的。
 
-#### 抽象界限（Abstraction Barriers）
+#### 抽象层级（Abstraction Barriers）
+
+在举更多的复合数据和数据抽象的例子之前，思考下在这个有理数例子中提出的一些问题。我们使用**构造函数（constructor）** `rational` 和**选择器（selectors）** `numer` ， `denom` 。一般来说，数据抽象的基本思想是确定一组基本操作，根据这些基本操作，所有对某种类型的值的操作都能被表示出来了，然后在操作数据时只使用这些操作。通过以这种方式限制操作的使用，因此在需要改变抽象数据的表示，而不改变程序的行为的时候就容易得多。
+
+对于有理数，程序的不同部分使用不同的操作方式来操作有理数，如下表所示。
+
+| 用来……的程序部分             | 把有理数当作……     | 只使用……                                                     |
+| ---------------------------- | ------------------ | ------------------------------------------------------------ |
+| 使用有理数进行计算           | 整个数据值         | `add_rational, mul_rational, rationals_are_equal, print_rational` |
+| 创建有理数或实现有理数运算   | 分子和分母         | `rational, numer, denom`                                     |
+| 实现有理数的选择函数和构造器 | 包含两个元素的列表 | 列表字面量和元素选择                                         |
+
+在上面的每一层中，最后一列中的函数加强了**抽象层级（abstraction barriers）**。这些函数由较高的抽象级别调用，并使用较低的抽象级别实现。
+
+> 翻译说明：最经典抽象层级的是网络协议了，网络协议的每一层和每一层都是分离的。每一层都是为上层提供服务，消费下层服务。这样，就可以轻轻松松换掉一层实现，而不影响功能。
+>
+> *选自：https://ruby-china.org/topics/33214*
+
+每当程序的一部分可以使用更高级别的函数而不是使用较低级别的函数时，就违反了抽象层级（的规定）（abstraction barrier violation）。例如，计算有理数平方的函数最好使用函数 `mul_rational` 来实现，该函数没有假设任何关于有理数的实现方式。
+
+```python
+>>> def square_rational(x):
+        return mul_rational(x, x)
+```
+
+直接引用分子和分母将违反抽象层及的规定。
+
+```python
+>>> def square_rational_violating_once(x):
+        return rational(numer(x) * numer(x), denom(x) * denom(x))
+```
+
+假设有理数表示为二元素列表将违反两个抽象层级的规定。
+
+```python
+>>> def square_rational_violating_twice(x):
+        return [x[0] * x[0], x[1] * x[1]]
+```
+
+抽象层级让程序更容易维护和修改。依赖于特定表示的函数越少，在想要更改该表示时所需的更改就越少。.`square_rational` 的所有这些实现都具有正确的行为，但只有第一个实现对未来的更改是健壮的。即使我们改变了有理数的表示，`square_rational` 函数也不需要更新。相比之下，只要选择器或构造函数签名发生变化，`square_rational_violating_once` 就需要更改。并且，`square_rational_violating_twice` 需要在有理数的实现发生变化时就进行更新。
+
+#### 数据的属性（The Properties of Data）
+
+抽象层级塑造了我们思考数据的方式。有理数的有效表示不会限于任何特定的实现（如一个包含两个元素的列表）；它是一个由 `rational` 函数返回的值，（而`rational` ）可以传递给 `number` 和 `denom`。此外，构造函数和选择器之间必须保持适当的关系。也就是说，如果我们从整数 `n` 和 `d` 构造一个有理数 `x` ，那么 `numer(x)/denom(x)` 应该等于 `n/d` 。
+
+一般来说，我们可以使用一组选择器和构造函数，外加一些行为条件来表达抽象数据。只要满足行为条件（如上面的除法属性），选择器和构造函数就构成了一种数据的有效表示。抽象层级之下的实现细节可能会改变，但如果行为没有改变，则数据抽象仍然有效，使用该数据抽象编写的任何程序也是正确的。
+
+这种观点可以被广泛应用，包括我们用来实现有理数的**数值对/组合（pair）**。实际上，我们从未过多地讨论数值对/组合是什么，只是说这种语言提供了创建和操作包含两个元素的列表的方法。实现数值对/组合所需的行为是将两个值“粘”在一起。作为一种行为条件，
+
+- 如果一个数值对/组合 `p` 是由`x` 和 `y` 构造的，那么选择`(p, 0)` 返回 `x` ，选择 `(p, 1)` 返回`y` 。
+
+我们实际上并不需要使用列表类型来创建数值对/组合。相反，我们可以实现两个函数 `pair` 和 `select` ，功能和包含两个元素的列表相同，从而来满足上述描述的需求。
+
+```python
+>>> def pair(x, y):
+        """Return a function that represents a pair."""
+        def get(index):
+            if index == 0:
+                return x
+            elif index == 1:
+                return y
+        return get
+>>> def select(p, i):
+        """Return the element at index i of pair p."""
+        return p(i)
+```
+
+有了上述的函数实现，我们就可以常见和操作数值对/组合了。
+
+```python
+>>> p = pair(20, 14)
+>>> select(p, 0)
+20
+>>> select(p, 1)
+14
+```
+
+这种高阶函数的使用与我们对数据应该是什么样子的直观概念完全不同。然而，这些函数足以在我们的程序中表示组合。函数足以表示复合数据。
+
+展示组合的函数表示的意义，并不在于 Python 实际上是这样运行的（出于效率的考虑，列表的实现更为直接），而是它可以这样运行。这种函数表示法虽然模糊，但它是完全适当的表示组合的一种方法，因为它满足了组合需要满足的唯一条件。数据抽象的实践允许我们在表示方法之间轻松进行切换。
+
+## Lecture 10 : Container & Lecture 12 : Trees
+
+### 序列（Sequences）
+
+**序列（sequence）**是值的有序集合。序列是计算机科学中强大的基本抽象。序列不是特定内置类型或抽象数据表示的实例，而是在几个不同类型的数据之间共享的行为集合。也就是说，序列有很多种，但它们都有共同的行为。尤其是，
+
+- **长度**。序列的长度是有限的。空序列的长度为 0。
+
+- **元素选择**。序列有一个元素，对应于小于其长度的任何非负整数索引，第一个元素从0开始。
+
+Python 有好几种原生数据类型，它们都是序列，其中最重要的一种是**列表（list）**。
+
+#### 列表（Lists）
+
+列表的值是可以具有任意长度的序列。列表有大量的内置行为，以及用于表达这些行为的特定语法。我们已见过了计算为列表实例的列表字面量，以及计算为列表中的值的元素选择表达式。内置的 `len` 函数可以返回列表的长度。如下，`digits` 是一个包含四个元素的列表。索引 3 处的元素是 8。
+
+```python
+>>> digits = [1, 8, 2, 8]
+>>> len(digits)
+4
+>>> digits[3]
+8
+```
+
+此外，列表也可以进行相加，还可与整数相乘。对于序列，其加法和乘法不会对元素添加或相乘，而是组合和复制序列本身。也就是说，`operator` 模块（和 `+` 操作符）中的 `add` 函数生成一个列表，该列表是所添加参数的拼接。`operator` （和 `*` 操作符）中的 `mul` 函数可以接受一个列表和一个整数 `k`，以返回由原始列表的 `k` 次重复组成的列表。
+
+```python
+>>> [2, 7] + digits * 2
+[2, 7, 1, 8, 2, 8, 1, 8, 2, 8]
+```
+
+任何值都可以包含在一个列表中，包括另一个列表。元素选择可以多次应用，以便在包含列表的列表中选择深度嵌套的元素。
+
+```python
+>>> pairs = [[10, 20], [30, 40]]
+>>> pairs[1]
+[30, 40]
+>>> pairs[1][0]
+30
+```
+
+#### 序列迭代（Sequence Iteration）
+
+在许多情况下，我们希望迭代序列的元素，并依次为每个元素执行一些计算。这种模式非常常见，因此Python有一个额外的控制语句来处理顺序数据：`for` 语句。
+
+思考一个值在序列中出现了多少次的问题。我们可以使用 `while` 循环实现一个函数来计算这个计数。
+
+```python
+>>> def count(s, value):
+        """Count the number of occurrences of value in sequence s."""
+        total, index = 0, 0
+        while index < len(s):
+            if s[index] == value:
+                total = total + 1
+            index = index + 1
+        return total
+      
+>>> count(digits, 8)
+2
+```
+
+Python 的 `for` 语句可以通过直接对元素的值进行迭代来简化这个函数体，根本不需要引入名称 `index` 。
+
+```python
+>>> def count(s, value):
+        """Count the number of occurrences of value in sequence s."""
+        total = 0
+        for elem in s:
+            if elem == value:
+                total = total + 1
+        return total
+      
+>>> count(digits, 8)
+2
+```
+
+`for` 语句由一个子句组成，其形式为：
+
+```python
+for <name> in <expression>:
+    <suite>
+```
+
+`for` 语句的执行过程如下：
+
+1. 对头部的 `<expression>` 求值，必定得到一个可迭代的值。
+2. 对于该可迭代值中的每个元素值，按顺序：
+   1. 在当前帧中，将 `<name>` 绑定给每个元素值
+   2. 执行 `<suite>`
+
+这个执行过程引用了可迭代的值。列表（list）是序列的一种类型，序列是可迭代的值。考虑它们的元素时，需要按顺序进行。 Python 包括其他可迭代类型，但我们现在将关注序列；术语“可迭代”的一般定义出现在第 4 章的迭代器部分。
+
+此计算过程的一个重要结果是 `<name>` 将在 `for` 语句执行后绑定到序列的最后一个元素。`for` 循环引入了另一种可以通过语句更新环境的方式。
+
+**序列解包（Sequence unpacking）**。程序中一个常见模式为：有一个元素序列，这些元素本身也是序列，但这些作为元素的序列本身都有固定的长度。`for` 语句可以在其头部中包含多个名称，以便将每个元素序列“解包”到其各自相应的元素中。例如，我们可能有一个包含两个元素列表的列表。
+
+```python
+>>> pairs = [[1, 2], [2, 2], [2, 3], [4, 4]]
+```
+
+然后求出第一和第二元素相同的组合的个数。
+
+```python
+>>> same_count = 0
+```
+
+下面头部中有两个名称的 `for` 语句将分别将每个名称 `x` 和 `y` 绑定到每个组合中的第一个和第二个元素。
+
+```python
+>>> for x, y in pairs:
+        if x == y:
+            same_count = same_count + 1
+>>> same_count
+2
+```
+
+这种将固定长度序列中的多个名称绑定到多个值的模式称为序列解包；这与我们在将多个名称绑定到多个值的赋值语句中知晓的模式相同。
+
+**范围（Ranges）**。`range` 是Python 中另一个内置的序列类型，可以表示一个整数范围。范围可以由 `range` （关键字）创建，它接受两个整数参数：所需范围内的第一个数和最后一个数后面的一个数。
+
+```python
+>>> range(1, 10)  # Includes 1, but not 10
+range(1, 10)
+```
+
+在范围上调用 `list` 的构造函数，得到的结果是与该范围具有相同元素的列表，这样就可以很容易地检查元素。
+
+```python
+>>> list(range(5, 8))
+[5, 6, 7]
+```
+
+如果只给出了一个参数，它将被解释为从 0 开始到该给定参数形成的范围的最后一个值。
+
+```python
+>>> list(range(4))
+[0, 1, 2, 3]
+```
+
+`range` 通常作为 `for` 头部中的表达式出现，用于指定语句组应该执行的次数：通常的约定是，如果该名称在语句组中未使用，则在 `for` 头部中为该名称使用单个下划线字符：
+
+```python
+>>> for _ in range(3):
+        print('Go Bears!')
+
+Go Bears!
+Go Bears!
+Go Bears!
+```
+
+对解释器来说，这个下划线只是环境中的另一个名称而已，但在程序员中具有常规意义，表示该名称不会出现在任何之后的表达式中。
+
+#### 序列处理（Sequence Processing）
+
+序列是复合数据的一种常见形式，以至于整个程序通常都是围绕这种单一抽象来组织的。具有序列作为输入和输出的模块化组件可以混合和匹配以执行数据处理。通过将序列处理操作的管道链接在一起，可以定义复杂的组件，每个序列处理操作都是简单和集中的。
+
+**列表推导式（List Comprehensions）** 。许多序列处理操作都可以表达成将序列中的每一个元素与固定表达式进行计算，并将计算结果进行收集最终组成结果序列。在 Python 中，列表推导式是执行这种计算的表达式。
+
+```python
+>>> odds = [1, 3, 5, 7, 9]
+>>> [x+1 for x in odds]
+[2, 4, 6, 8, 10]
+```
+
+> 翻译注：该部分详细信息可以参见维基百科与runoob相关信息：
+>
+> - [列表推導式 - 維基百科，自由的百科全書 (wikipedia.org)](https://zh.wikipedia.org/zh-tw/列表推导式)
+> - [Python 推导式 | 菜鸟教程 (runoob.com)](https://www.runoob.com/python3/python-comprehensions.html)
+
+上面的 `for` 关键字不是 `for` 语句的一部分，而是列表推导式的一部分，因为它包含在方括号中。对子表达式 `x+1` 进行求值，其中 `x` 依次绑定到 `odds` 的每个元素，并将结果值收集到一个列表中。
+
+另一个常见的序列处理操作是选择满足某些条件的值的子集。列表推导式也可以表达这种模式，例如，选择 `odds` 中所有能整除 25 的元素。
+
+```python
+>>> [x for x in odds if 25 % x == 0]
+[1, 5]
+```
+
+列表推导式的一般形式是：
+
+```latex
+[<map expression> for <name> in <sequence expression> if <filter expression>]
+```
+
+要计算列表推导式，Python 先计算 `<sequence expression>` ，它必须返回一个可迭代值。然后，对于按顺序排列的每个可迭代值的元素，将其值绑定到 `<name>` ，计算筛选器表达式 `<filter expression>` ，如果它产生一个真值，则计算映射表达式`<map expression>`。映射表达式的值被收集到一个列表中。
+
+**聚合（Aggregation）**。序列处理中的第三种常见模式是将序列中的所有值聚合为单个值。内置函数 `sum`、`min` 和 `max` 都是聚合函数的示例。
+
+通过组合为每个元素计算表达式（evaluating an expression for each element）、选择元素子集（selecting a subset of elements）和聚合元素（aggregating elements）的模式，我们可以使用序列处理方法解决问题。
+
+完美数是一个正整数，等于其除数之和。`n` 的除数是小于 `n` 的正整数，它们被 `n` 整除。用列表推导式可以表示 `n` 的除数。
+
+```python
+>>> def divisors(n):
+        return [1] + [x for x in range(2, n) if n % x == 0]
+    
+>>> divisors(4)
+[1, 2]
+>>> divisors(12)
+[1, 2, 3, 4, 6]
+```
+
+使用 `divisors` 函数，我们可以使用其它的列表推导式来计算从 1 到 1000 的完美数。（ 通常认为 1 也是完美数，但是它不符合我们函数 `divisors` 中完美数的定义。）
+
+```python
+>>> [n for n in range(1, 1000) if sum(divisors(n)) == n]
+[6, 28, 496]
+```
+
+我们可以重新使用 `divisors` 的定义来解决另一个问题，在给定面积的情况下，求边长为整数的矩形的最小周长。矩形的面积是高乘以宽。因此，给定面积和高度，我们可以计算宽度。我们可以断言，宽度和高度都可以整除面积，以确保边长是整数。
+
+```python
+>>> def width(area, height):
+        assert area % height == 0
+        return area // height
+```
+
+矩形的周长是它的边长之和。
+
+```python
+>>> def perimeter(width, height):
+        return 2 * width + 2 * height
+```
+
+边长为整数的矩形的高度必是其面积的除数。我们可以通过考虑所有的高度来计算最小周长。
+
+```python
+>>> def minimum_perimeter(area):
+        heights = divisors(area)
+        perimeters = [perimeter(width(area, h), h) for h in heights]
+        return min(perimeters)
+    
+>>> area = 80
+>>> width(area, 5)
+16
+>>> perimeter(16, 5)
+42
+>>> perimeter(10, 8)
+36
+>>> minimum_perimeter(area)
+36
+>>> [minimum_perimeter(n) for n in range(1, 10)]
+[4, 6, 8, 8, 12, 10, 16, 12, 12]
+```
+
+**高阶函数（Higher-Order Functions）**。
