@@ -3011,5 +3011,132 @@ getitem_link(four, 1)
 
 最后的环境关系图显示了调用 `first` 的局部帧，该帧中包含了绑定到同一子列表的名称。第一个函数选择值 2 并返回它，该值也将从 `getitem_link` 返回。
 
-这个例子演示了链表的常见计算模式，其中迭代中的每一步操作，都在原始链表的一个越来越短的后继部分（子链表）上进行。
+这个例子演示了链表的常见计算模式，其中每一步迭代操作，都会在原始链表的一个越来越短的后继部分（子链表）上进行。这种用于查找链表长度和元素的增量处理确实需要一些时间来计算。Python 的内置序列类型以不同的方式实现，计算序列长度或检索其元素的成本并不高。该表示的细节超出了本文的范围。
+
+**递归操作（Recursive manipulation）**。`len_link` 和 `getitem_link` 都是可迭代的。它们剥离嵌套对的每一层，直到到达列表的末尾（在 `len_link` 中）或所需的元素（在 `getitem_link` 中）。我们还可以使用递归来实现长度和元素选择。
+
+```python
+>>> def len_link_recursive(s):
+        """Return the length of a linked list s."""
+        if s == empty:
+            return 0
+        return 1 + len_link_recursive(rest(s))
+    
+>>> def getitem_link_recursive(s, i):
+        """Return the element at index i of linked list s."""
+        if i == 0:
+            return first(s)
+        return getitem_link_recursive(rest(s), i - 1)
+    
+>>> len_link_recursive(four)
+4
+>>> getitem_link_recursive(four, 1)
+2
+```
+
+这些递归实现遵循组合链（follow the chain of pairs），直到到达列表的末尾（在 `len_link_recursive` 中）或所需的元素（在 `getitem_link_recursive` 中）。
+
+递归对于转换和组合链表也很有用。
+
+```python
+>>> def extend_link(s, t):
+        """Return a list with the elements of s followed by those of t."""
+        assert is_link(s) and is_link(t)
+        if s == empty:
+            return t
+        else:
+            return link(first(s), extend_link(rest(s), t))
+        
+>>> extend_link(four, four)
+[1, [2, [3, [4, [1, [2, [3, [4, 'empty']]]]]]]]
+
+>>> def apply_to_all_link(f, s):
+        """Apply f to each element of s."""
+        assert is_link(s)
+        if s == empty:
+            return s
+        else:
+            return link(f(first(s)), apply_to_all_link(f, rest(s)))
+        
+>>> apply_to_all_link(lambda x: x*x, four)
+[1, [4, [9, [16, 'empty']]]]
+
+>>> def keep_if_link(f, s):
+        """Return a list with elements of s for which f(e) is true."""
+        assert is_link(s)
+        if s == empty:
+            return s
+        else:
+            kept = keep_if_link(f, rest(s))
+            if f(first(s)):
+                return link(first(s), kept)
+            else:
+                return kept
+            
+>>> keep_if_link(lambda x: x%2 == 0, four)
+[2, [4, 'empty']]
+
+>>> def join_link(s, separator):
+        """Return a string of all elements in s separated by separator."""
+        if s == empty:
+            return ""
+        elif rest(s) == empty:
+            return str(first(s))
+        else:
+            return str(first(s)) + separator + join_link(rest(s), separator)
+        
+>>> join_link(four, ", ")
+'1, 2, 3, 4'
+```
+
+**递归构造（Recursive Construction）**。链表在增量构造序列时特别有用，这种情况经常出现在递归计算中。
+
+第 1 章中的 `count_partitions` 函数计算了通过树递归过程使用最大为 `m` 的部分对整数 `n` 进行整数拆分方法的数量。对于序列，我们还可以使用类似的方法显式枚举这些拆分情况。
+
+我们采用与计数时相同的递归分析方法：用 `m` 以内的整数对 `n` 进行拆分。
+
+1. 使用最大为 `m` 的整数拆分 `n-m`，或者
+2. 使用最大为 `m-1` 的整数拆分 `n` 。
+
+在基础情况（base case）下，0 的拆分为空，而拆分一个复数或者使用小于 1 的部分进行拆分也是不可能的。
+
+```python
+>>> def partitions(n, m):
+        """Return a linked list of partitions of n using parts of up to m.
+        Each partition is represented as a linked list.
+        """
+        if n == 0:
+            return link(empty, empty) # A list containing the empty partition
+        elif n < 0 or m == 0:
+            return empty
+        else:
+            using_m = partitions(n-m, m)
+            with_m = apply_to_all_link(lambda s: link(m, s), using_m)
+            without_m = partitions(n, m-1)
+            return extend_link(with_m, without_m)
+```
+
+在递归的情况下，我们构造了两个整数拆分的子列表。第一个子列表使用 `m`，所以我们在结果 `using_m` 的每个元素前加上 `m` 以构成 `with_m` 。
+
+整数拆分的结果是高度嵌套的：即链表中包含了链表，每个链表都表示为嵌套对，即列表值。使用带有适当分隔符的 `join_link` 函数，我们可以以人类可读的方式显示整数拆分。
+
+```python
+>>> def print_partitions(n, m):
+        lists = partitions(n, m)
+        strings = apply_to_all_link(lambda s: join_link(s, " + "), lists)
+        print(join_link(strings, "\n"))
+        
+>>> print_partitions(6, 4)
+4 + 2
+4 + 1 + 1
+3 + 3
+3 + 2 + 1
+3 + 1 + 1 + 1
+2 + 2 + 2
+2 + 2 + 1 + 1
+2 + 1 + 1 + 1 + 1
+1 + 1 + 1 + 1 + 1 + 1
+```
+
+
 
