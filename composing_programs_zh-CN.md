@@ -2697,9 +2697,9 @@ Read more: import this."""
 
 #### 树（Trees）
 
-我们**使用列表作为其他列表的元素**的能力，在编程语言中提供了一种新的组合方法。这种能力称为数据类型的**闭包属性（closure property）**。通常，如果组合的结果本身可以使用相同的方法组合，则组合数据值的方法具有闭包属性。在任何组合方式中，闭合都是权力的关键，因为它可以让我们创建出**分层结构（hierarchical structures）**—— 由部分组成的结构，而结构本身又由更小的部分组成，以此类推。
+我们**使用列表作为其他列表的元素**的能力，在编程语言中提供了一种新的组合方法。这种能力称为数据类型的**闭包属性（closure property）**。通常，如果组合的结果本身可以使用相同的方法组合，则组合数据值的方法具有闭包属性。在任何组合方式中，闭包都是权力的关键，因为它可以让我们创建出**分层结构（hierarchical structures）**—— 由部分组成的结构，而结构本身又由更小的部分组成，以此类推。
 
-我们可以使用 “框-指针表示法” 在环境关系图中可将列表可视化。列表被描述为包含列表元素的相邻框。诸如数字、字符串、布尔值和 `None` 等基本值出现在作为元素的框中。复合值（例如函数值和其他列表）由箭头指示。
+我们可以使用 “框-指针表示法” 在环境关系图中可将列表可视化。列表被描述为包含列表元素的相邻框。诸如数值、字符串、布尔值和 `None` 等基本值出现在作为元素的框中。复合值（例如函数值和其他列表）由箭头指示。
 
 ```python
 one_two = [1, 2]
@@ -2710,7 +2710,7 @@ nested = [[1, 2], [],
 
 <img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220927211040605.png" alt="image-20220927211040605" style="zoom:67%;" />
 
-在列表中嵌套列表会引入复杂度。树是一种基本的数据抽象，它对分层值的结构和操作施加了规律性。树有一个根标签和一系列的分支。一棵树的每一根树枝都是一棵树。没有树枝的树叫做叶子。树中包含的任何树都称为该树的子树（例如分支的分支）。树的每一个子树的根称为树中的节点。
+在列表中嵌套列表会引入复杂度。树是一种基本的数据抽象，它对分层的**值的结构**和**操作**施加了规律性。树有一个**根标签（root label）**和一系列的分支。一棵树的每一根**分支（branch）**也是一棵树。没有分支的树叫做**叶子（leaf）**。树中包含的任何树都称为该树的子树（例如分支的分支）。树的每一个子树的根称为树中的**节点（node）**。
 
 树的数据抽象由构造函数 `tree` 、选择器 `label` 和分支 `branches` 组成。我们从一个简化版本的树开始。
 
@@ -2727,7 +2727,7 @@ nested = [[1, 2], [],
         return tree[1:]
 ```
 
-一棵树只有当它有一个根标签并且所有分支也是树时才是**良构的（well-formed）**。`is_tree` 函数在 `tree` 构造函数中应用，以验证所有分支是否都是良构的。
+一棵树，只有当它有一个根标签并且所有分支也是树时才是**良构的（well-formed）**。`is_tree` 函数在 `tree` 构造函数中应用，以验证所有分支是否都是良构的。
 
 ```python
 >>> def is_tree(tree):
@@ -2857,11 +2857,159 @@ True
 
 #### 链表（Linked Lists）
 
-到目前为止，我们只能使用原生类型来表示序列。但是，我们也可以开发 Python 中没有内置的序列表示方式。由**嵌套对（nested pairs）**构造的序列的一种常见表示称为**链表（linked list）**。下面的环境图演示了包含1、2、3和4的四元素序列的链表表示。
+到目前为止，我们只能使用原生类型来表示序列。但是，我们也可以开发 Python 中没有内置的序列表示方式。由**嵌套对（nested pairs）**构造的序列的一种常见表示称为**链表（linked list）**。下面的环境图演示了包含1、2、3 和 4 的四元素序列的链表表示。
 
 ```python
 four = [1, [2, [3, [4, 'empty']]]]
 ```
 
 <img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220927215705235.png" alt="image-20220927215705235" style="zoom:80%;" />
+
+链表是包含序列的第一个元素（在本例中为 1）和序列的其余部分（在本例中表示为 2、3、4 ）的一个**组合（pair）**。第二个元素也是一个链表。仅包含 4 的最内层链表的其余部分是  `empty` ，是一个空链表的值。
+
+```python
+>>> empty = 'empty'
+>>> def is_link(s):
+        """s is a linked list if it is empty or a (first, rest) pair."""
+        return s == empty or (len(s) == 2 and is_link(s[1]))
+    
+>>> def link(first, rest):
+        """Construct a linked list from its first element and the rest."""
+        assert is_link(rest), "rest must be a linked list."
+        return [first, rest]
+    
+>>> def first(s):
+        """Return the first element of a linked list s."""
+        assert is_link(s), "first only applies to linked lists."
+        assert s != empty, "empty linked list has no first element."
+        return s[0]
+    
+>>> def rest(s):
+        """Return the rest of the elements of a linked list s."""
+        assert is_link(s), "rest only applies to linked lists."
+        assert s != empty, "empty linked list has no rest."
+        return s[1]
+```
+
+以上部分， `link` 是一个构造函数，且 `first` 和 `rest` 是链表的抽象数据表示的选择器。链表的行为条件和组合（pair）一样，它的构造函数和选择器互为功能相反的函数。
+
+- 如果链表 `s` 由第一个元素 `f` 和链表 `r` 构成，则 `first(s)` 返回 `f` ，`rest(s)` 返回 `r` 。
+
+我们可以使用构造函数和选择器来操作链表。
+
+```python
+>>> four = link(1, link(2, link(3, link(4, empty))))
+>>> first(four)
+1
+>>> rest(four)
+[2, [3, [4, 'empty']]]
+```
+
+这种抽象数据的实现使用了双元素的 `list` 值对/组合。值得注意的是，我们还能够使用函数实现组合，并且还可以使用任何组合实现链表，因此我们可以单独使用函数实现链表。
+
+链表可以按顺序存储一系列值，但是我们还没证明它满足了序列抽象。使用定义过的抽象数据来表示，我们可以实现描述序列的两个行为：长度和元素选择。
+
+```python
+>>> def len_link(s):
+        """Return the length of linked list s."""
+        length = 0
+        while s != empty:
+            s, length = rest(s), length + 1
+        return length
+        
+>>> def getitem_link(s, i):
+        """Return the element at index i of linked list s."""
+        while i > 0:
+            s, i = rest(s), i - 1
+        return first(s)
+```
+
+现在，可以使用这些函数将链表作为序列来操作。 （还不能使用内置的 len 函数、元素选择语法或 for 语句，但很快就会使用。）
+
+```python
+>>> len_link(four)
+4
+>>> getitem_link(four, 1)
+2
+```
+
+下面的一系列环境关系图说明了 `getitem_link` 在链表中查找索引为 1 的元素 2 的迭代过程。如下，我们使用 Python 的原始数据类型定义了链表 `four` ，以简化环境关系图。这种实现其实选择违反了抽象层级，但让我们在本例中能更容易地检查计算过程。
+
+```python
+def first(s):
+    return s[0]
+def rest(s):
+    return s[1]
+
+def getitem_link(s, i):
+    while i > 0:
+        s, i = rest(s), i - 1
+    return first(s)
+
+four = [1, [2, [3, [4, 'empty']]]]
+getitem_link(four, 1)
+```
+
+<img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220928112125326.png" alt="image-20220928112125326" style="zoom:80%;" />
+
+首先，调用函数 `getitem_link`，创建一个局部帧。
+
+```python
+def first(s):
+    return s[0]
+def rest(s):
+    return s[1]
+
+def getitem_link(s, i):
+    while i > 0:
+        s, i = rest(s), i - 1
+    return first(s)
+
+four = [1, [2, [3, [4, 'empty']]]]
+getitem_link(four, 1)
+```
+
+<img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220928112434350.png" alt="image-20220928112434350" style="zoom:80%;" />
+
+`while` 头部中的表达式计算结果为 `true` 时， `while` 语句组中的赋值语句执行。 `rest` 函数将返回以 2 开头的子列表。
+
+```python
+def first(s):
+    return s[0]
+def rest(s):
+    return s[1]
+
+def getitem_link(s, i):
+    while i > 0:
+        s, i = rest(s), i - 1
+    return first(s)
+
+four = [1, [2, [3, [4, 'empty']]]]
+getitem_link(four, 1)
+```
+
+<img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220928112931238.png" alt="image-20220928112931238" style="zoom:80%;" />
+
+接下来，局部名称 `s` 将被更新为引用子列表，这个子列表是以原始列表的第二个元素开始的。现在计算 `while` 头部表达式则会得到一个假值，因此 Python 在 `getitem_link` 的最后一行上计算 `return` 语句中的表达式。
+
+```python
+def first(s):
+    return s[0]
+def rest(s):
+    return s[1]
+
+def getitem_link(s, i):
+    while i > 0:
+        s, i = rest(s), i - 1
+    return first(s)
+
+four = [1, [2, [3, [4, 'empty']]]]
+getitem_link(four, 1)
+```
+
+<img src="https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20220928113320345.png" alt="image-20220928113320345" style="zoom:80%;" />
+
+最后的环境关系图显示了调用 `first` 的局部帧，该帧中包含了绑定到同一子列表的名称。第一个函数选择值 2 并返回它，该值也将从 `getitem_link` 返回。
+
+这个例子演示了链表的常见计算模式，其中迭代中的每一步操作，都在原始链表的一个越来越短的后继部分（子链表）上进行。
 
