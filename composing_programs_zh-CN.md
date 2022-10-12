@@ -3138,5 +3138,330 @@ getitem_link(four, 1)
 1 + 1 + 1 + 1 + 1 + 1
 ```
 
+## Lecture 13 : Mutable Values & Lecture 14 : List Mutation + Identity + Nonlocal
 
+### 可变数据（Mutable Data）
 
+我们已经看到抽象在帮助我们处理大型系统的复杂性方面有多么重要。有效的编程还需要组织原则，这些原则可以指导我们制定程序的总体设计。特别是，我们需要策略来帮助我们构建大型系统，使其模块化，模块化的程序是可以被自然而然地划分为可以单独开发和维护的一致性部分。
+
+我们用于创建模块化程序的强大工具之一，是引入可能会随时间改变的新类型数据。这样，单个数据可以表示独立于其他程序演化的东西。一个不断变化的物体的行为可能受到其历史的影响，就像世界上的一个实体一样。向数据添加状态是称为面向对象的范式的核心组成部分。
+
+#### 对象的隐喻（The Object Metaphor）
+
+在本文的开头，我们区分了函数和数据：函数执行操作，数据可以被操作。当我们在数据中包含函数值时，可以认为数据也能有行为。函数可以作为数据操作，也可以调用来执行计算。
+
+对象将数据值与行为结合了起来。对象表示信息，但也表现得像它们所表示的事物。对象如何与其他对象交互的逻辑与编码对象值的信息捆绑在一起。当一个对象被打印出来时，它知道如何在文本中拼写自己。如果一个对象是由其组成部分构成的，它知道如何按需显示这些组成部分部分。对象既是信息页是过程，二者合为一体来表示复杂事物的属性、交互和行为。
+
+对象行为是通过专门的对象语法和相关术语在 Python 中实现的，我们可以通过示例来引入。其中的日期是一种对象。
+
+```python
+>>> from datetime import date
+```
+
+名称 `data` 绑定了一个**类 （class）**。正如我们所见的，类表示了一类值。单个的日期称为该类的**实例（instance）**。可以通过在表征实例的参数上调用类来**构造（construct）**实例。
+
+```python 
+>>> tues = date(2014, 5, 13)b
+```
+
+虽然 `tues` 是由原生数值类型构成的，但它的行为如同一个日期。例如，从另一个日期中减去它会得到一个时间差，我们可以将这个时间差打印出来。
+
+```python
+>>> print(date(2014, 5, 19) - tues)
+6 days, 0:00:00
+```
+
+对象具有**属性（attributes）**，属性是对象中一部分的带有名称的值。与许多其他编程语言一样，在Python 中，我们使用点表示法来指定对象的属性。
+
+```text
+<expression> . <name>
+```
+
+在上述的表达式中， `<expression>` 运算结果为对象，`<name>` 是该对象的属性名。与我们迄今为止知道的名称不同，这些属性名称在一般环境中是不可用的。相反，属性名称特定于点之前的对象实例。
+
+```python
+>>> tues.year
+2014
+```
+
+对象还具有**方法（methods）**，方法是具有函数值属性的。打个比方，我们说对象“知道”如何执行这些方法。通过实现得知，方法是可以通过对参数和对象进行计算得到结果的函数。例如，`tues` 的`strftime` 方法（一个经典的函数名，旨在唤起“时间的字符串格式”）接受一个参数，指定如何显示日期（如： `%A` 表示应完整拼写出星期几）
+
+```python
+>>> tues.strftime('%A, %B %d')
+'Tuesday, May 13'
+```
+
+计算 `strftime` 的返回值需要两个输入：描述输出格式的字符串，绑定到 `tues` 的日期信息。在此方法中应用特定于日期的逻辑来产生此结果。我们从未说过  2014 年 5 月 13 日是星期二，但知道对应的工作日（2014 年 5 月 13 日）是日期的一部分。通过将行为和信息绑定在一起，这个 Python 对象为我们提供了一个令人信服的、自包含的日期抽象。
+
+日期是对象，但数字、字符串、列表和范围也都是对象。他们代表值，且行为与他们所表示的值的行为一致。对象也有属性和方法。如字符串就有一系列便于文本处理的方法。
+
+```python
+>>> '1234'.isnumeric()
+True
+>>> 'rOBERT dE nIRO'.swapcase()
+'Robert De Niro'
+>>> 'eyes'.upper().endswith('YES')
+True
+```
+
+事实上，Python 中所有的值都是对象。也就是说，所有的值都具有行为和属性。类的表现就和他们所代表的值一样。
+
+#### 序列对象（Sequence Objects）
+
+原始内置值的实例（例如数字）是**不可变的（immutable）**。这些值本身不能在程序执行过程中改变。另一方面，列表是**可变的（mutable）**。
+
+可变对象用于表示随时间变化的值。一个人从一天到另一天都是同一个人，尽管已经变老、理了发或以其他方式发生了变化。与此类似，由于发生了 **可变操作（mutating operations）** ，对象可能具有不断变化的属性。例如，可以更改列表的内容。大多数更改是通过调用列表对象上的方法来执行的。
+
+我们可以通过一个（大大简化的）扑克牌历史的例子来介绍许多列表修改操作。示例中的注释描述了每个方法调用的效果。
+
+扑克牌是在中国发明的，时间大概在 9 世纪左右。早期的套牌有三套花色，对应于货币面额。
+
+```python
+>>> chinese = ['coin', 'string', 'myriad']  # A list literal
+>>> suits = chinese                         # Two names refer to the same list
+```
+
+随着扑克牌传到欧洲（可能通过了埃及），西班牙牌组（oro）中只剩下一副 coin 牌。
+
+```python
+>>> suits.pop()             # Remove and return the final element
+'myriad'
+>>> suits.remove('string')  # Remove the first element that equals the argument
+```
+
+又增加了三套牌组（随着时间的推移，它们的名称和设计不断演变），
+
+```python
+>>> suits.append('cup')              # Add an element to the end
+>>> suits.extend(['sword', 'club'])  # Add all elements of a sequence to the end
+```
+
+和意大利人称为 spade 的牌组。
+
+```python
+>>> suits[2] = 'spade'  # Replace an element
+```
+
+添加了传统意大利纸牌的（总）牌组。
+
+```python
+>>> suits
+['coin', 'cup', 'spade', 'club']
+```
+
+当前国使用的法式牌组变体改变了（总牌组）的前两种牌组：
+
+```python
+>>> suits[0:2] = ['heart', 'diamond']  # Replace a slice
+>>> suits
+['heart', 'diamond', 'spade', 'club']
+```
+
+还存在用于插入、排序和反转列表的方法。所有这些可变操作都会改变列表的值；他们不会创建新的列表对象。
+
+**共享和身份（Sharing and identity）**。因为我们一直在更改单个列表而不是创建新列表，与名称 `chinese` 绑定的对象也发生了变化，因为它是绑定到 `suits` 的同一个列表对象！
+
+```python
+>>> chinese  # This name co-refers with "suits" to the same changing list
+['heart', 'diamond', 'spade', 'club']
+```
+
+这是一种全新的行为。先前，如果一个名字没有出现在一个语句中，那么它的值就不会受到那个语句的影响。对于可变数据，对一个名称调用的方法可以同时影响另一个名称。
+
+此示例的环境关系图显示了绑定到 `chinese` 的值如何被包含 `suits` 的语句更改。单步执行以下示例的每一行以观察这些变化。
+
+```python
+chinese = ['coin', 'string', 'myriad']
+suits = chinese
+suits.pop()
+suits.remove('string')
+suits.append('cup')
+suits.extend(['sword', 'club'])
+suits[2] = 'spade'
+suits[0:2] = ['heart', 'diamond']
+```
+
+![image-20221011142544865](https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20221011142544865.png)
+
+可以使用列表构造函数复制列表。对一个列表的更改不会影响另一个列表，除非它们共享结构。
+
+```python
+>>> nest = list(suits)  # Bind "nest" to a second list with the same elements
+>>> nest[0] = suits     # Create a nested list
+```
+
+根据当前环境，更改 `suits` 引用的列表将影响作为 `nest` 的第一个元素的嵌套列表，但不会影响其他元素。
+
+```python
+>>> suits.insert(2, 'Joker')  # Insert an element at index 2, shifting the rest
+>>> nest
+[['heart', 'diamond', 'Joker', 'spade', 'club'], 'diamond', 'spade', 'club']
+```
+
+同样，撤消嵌套列表第一个元素中的这种更改也会改变 `suits`。
+
+```python
+>>> nest[0].pop(2)
+'Joker'
+>>> suits
+['heart', 'diamond', 'spade', 'club']
+```
+
+逐行浏览此示例将显示嵌套列表的表示。
+
+```python
+suits = ['heart', 'diamond', 'spade', 'club']
+nest = list(suits)
+nest[0] = suits
+suits.insert(2, 'Joker')
+joke = nest[0].pop(2)
+```
+
+![image-20221011143743206](https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20221011143743206.png)
+
+![image-20221011143834844](https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20221011143834844.png)
+
+因为两个列表可能具有相同的内容，但实际上是不同的列表，我们需要一种方法来测试两个对象是否相同。Python 包含两个比较运算符，称为 `is` 和 `is not` ，用于测试两个表达式实际上是否计算为相同的对象。如果两个对象的当前值相等，则它们是相同的，并且对一个对象的任何更改将始终反映在另一个对象中。**身份（identity）**是比相等更强的条件。
+
+```python
+>>> suits is nest[0]
+True
+>>> suits is ['heart', 'diamond', 'spade', 'club']
+False
+>>> suits == ['heart', 'diamond', 'spade', 'club']
+True
+```
+
+最后的两个比较说明了 `is` 和 `==` 之间的区别。前者检查身份，而后者检查内容的相等性。
+
+**列表推导式（List comprehensions）**。列表推导式总会创建一个新列表。例如， ` unicodedata`  模块跟踪 Unicode 字母表中每个字符的正式名称。我们可以查找与名称相对应的字符，包括牌组的字符。
+
+```python
+>>> from unicodedata import lookup
+>>> [lookup('WHITE ' + s.upper() + ' SUIT') for s in suits]
+['♡', '♢', '♤', '♧']
+```
+
+这个结果列表不与`suits` 共享它的任何内容，并且列表推导式求值也不会修改 `suits` 列表。
+
+您可以在 [Dive Into Python 3 的 Unicode 部分]([Strings - Dive Into Python 3](https://diveintopython3.net/strings.html))阅读更多关于表示文本的 Unicode 标准。
+
+**元组（Tuple）**。元组是内置 `tuple` 类型的实例，是一个不可变序列。元组是使用元组字面量创建的，用逗号分隔元素表达式。括号是可选的，但在实践中经常使用。任何对象都可以放在元组中。
+
+```python
+>>> 1, 2 + 3
+(1, 5)
+>>> ("the", 1, ("and", "only"))
+('the', 1, ('and', 'only'))
+>>> type( (10, 20) )
+<class 'tuple'>
+```
+
+空元组和单元素元组具有特殊的文本语法。
+
+```python
+>>> ()    # 0 elements
+()
+>>> (10,) # 1 element
+(10,)
+```
+
+像列表一样，元组有有限的长度并支持元素选择。元组也有一些可用于列表的方法，如 `count` 和 `index` 。
+
+```python
+>>> code = ("up", "up", "down", "down") + ("left", "right") * 2
+>>> len(code)
+8
+>>> code[3]
+'down'
+>>> code.count("down")
+2
+>>> code.index("left")
+4
+```
+
+但是，操作列表内容的方法不适用于元组，因为元组是不可变的。
+
+虽然无法更改元组中的元素，但可以更改元组中包含的可变元素的值。
+
+```python
+nest = (10, 20, [30, 40])
+nest[2].pop()
+```
+
+![image-20221011155716144](https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20221011155716144.png)
+
+元组在多重赋值中被隐式使用。将两个值分配给两个名称会创建一个包含两个元素的元组，然后将其解包。
+
+#### 字典（Dictionaries）
+
+字典是 Python 用于存储和操作通信关系的内置数据类型。字典包含 键-值 对，其中键和值都是对象。字典的目的是为存储和检索不是按连续整数而是按描述性键索引的值提供一种抽象。
+
+字符串通常用作键，因为字符串是我们对事物名称的常规表示。这个字典字面量给出了各种罗马数字的值。
+
+```python
+>>> numerals = {'I': 1.0, 'V': 5, 'X': 10}
+```
+
+通过键查找值使用要我们之前应用于序列的元素选择操作符。
+
+```python
+>>> numerals['X']
+10
+```
+
+字典中每个键最多只能有一个值。添加新的键-值对和更改键的现有值都可以通过赋值语句实现。
+
+```python
+>>> numerals['I'] = 1
+>>> numerals['L'] = 50
+>>> numerals
+{'I': 1, 'X': 10, 'L': 50, 'V': 5}
+```
+
+需要注意，“L” 没有被添加到上面输出的末尾。字典是键值对的无序集合。当我们打印字典时，键和值是按某种顺序呈现的，但作为语言的用户，我们无法预测该顺序是什么。当运行一个程序多次时，顺序可能会改变。
+
+字典也可以出现在环境关系图中。
+
+![image-20221011160509217](https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20221011160509217.png)
+
+字典类型还支持对整个字典内容进行迭代的各种方法。如`keys, values` 和  `items` 方法都返回可迭代的值。
+
+```python
+>>> sum(numerals.values())
+66
+```
+
+可以通过调用 `dict` 构造函数将键值对列表转换为字典。
+
+```python
+>>> dict([(3, 9), (4, 16), (5, 25)])
+{3: 9, 4: 16, 5: 25}
+```
+
+字典确实有一些限制：
+
+- 字典的键不能是或包含可变的值。
+- 给定键最多可以有一个值。
+
+第一个限制与 Python 中字典的底层实现有关。这个实现的细节不是本文的主题。直观地说，键告诉 Python 在内存的什么地方可以找到键-值对；如果密钥发生变化，则可能丢失键值对的位置。元组通常用于字典中的键，因为不能使用列表。
+
+第二个限制是字典抽象的结果，它旨在存储和检索键的值。如果字典中最多存在一个这样的值，我们只能检索键的值。
+
+字典实现的一个有用的方法是 `get` ，它返回键的值（如果键存在）或默认值。要获取的参数是键和默认值。
+
+```python
+>>> numerals.get('A', 0)
+0
+>>> numerals.get('V', 0)
+5
+```
+
+字典也有类似于列表推导式的语法。键表达式和值表达式由冒号分隔。对字典推导式求值将创建一个新的字典对象。
+
+```python
+>>> {x: x*x for x in range(3,6)}
+{3: 9, 4: 16, 5: 25}
+```
+
+#### 局部状态（Local State）
