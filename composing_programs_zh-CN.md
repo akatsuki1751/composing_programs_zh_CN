@@ -3465,3 +3465,84 @@ nest[2].pop()
 ```
 
 #### 局部状态（Local State）
+
+列表和字典具有**局部状态（local state）**：它们正在改变在程序执行的任何时刻具有的某些特定内容的值。“状态”一词指的是状态可能改变的演化过程。
+
+函数也有局部状态。例如，我们定义一个函数来模拟从银行账户取款的过程。创建一个函数 `withdraw` ，它的参数是要提取的金额。如果账户中有足够的钱可以支取，那么 `withdraw` 将返回支取后剩余的余额。否则， `withdraw` 将返回消息 `'insufficient funds'` 。比如，如果账户一开始有 $100 ，我们希望通过调用 `withdraw` 来获得以下返回值序列：
+
+```python
+>>> withdraw(25)
+75
+>>> withdraw(25)
+50
+>>> withdraw(60)
+'Insufficient funds'
+>>> withdraw(15)
+35
+```
+
+如上，表达式 `withdraw(25)` 计算了两次，产生了不同的值。因此，这个用户定义的函数是非纯的。调用函数不仅会返回一个值，而且还有一个以某种方式改变函数的副作用，这样，下次调用同样的参数就会返回不同的结果。该副作用是 `withdraw`  的结果，该结果在当前帧外部，对名称-值绑定关系ge那个改所导致的。
+
+为了让 `withdraw` 变得有意义，它必须与初始账户余额一起创建。函数 `make_withdraw` 是一个以起始余额为参数的高阶函数。函数 `withdraw` 是它的返回值。
+
+```
+>>> withdraw = make_withdraw(100)
+```
+
+`make_withdraw` 的实现需要一种新的语句：**非局部（ `nonlocal` ）语句**。当调用 `make_withdraw` 时，我们将名称余额绑定到初始金额。然后我们定义并返回一个局部函数 `withdraw`，它在被调用时更新并返回 `balance` 的值。
+
+```python
+>>> def make_withdraw(balance):
+        """Return a withdraw function that draws down balance with each call."""
+        def withdraw(amount):
+            nonlocal balance                 # Declare the name "balance" nonlocal
+            if amount > balance:
+                return 'Insufficient funds'
+            balance = balance - amount       # Re-bind the existing balance name
+            return balance
+        return withdraw
+```
+
+非局部语句声明：每当我们更改名称 `balance` 的绑定时，绑定会在已绑定 `balance` 的第一帧中进行更改。回想一下，如果没有非局部语句，赋值语句总是在当前环境的第一帧中绑定一个名称。非局部语句表示：名称出现在环境中除第一个（局部）帧或最后一个（全局）帧之外的某处。
+
+以下环境关系图说明了多次调用 `make_withdraw` 创建的函数的效果。
+
+```python
+def make_withdraw(balance):
+    def withdraw(amount):
+        nonlocal balance
+        if amount > balance:
+            return 'Insufficient funds'
+        balance = balance - amount
+        return balance
+    return withdraw
+
+wd = make_withdraw(20)
+wd(5)
+wd(3)
+```
+
+![image-20221014145046259](https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20221014145046259.png)
+
+第一个 `def` 语句通常具有的效果：创建一个新的用户定义函数，并将名称 `make_withdraw` 绑定到全局帧中的该函数。随后对 `make_withdraw` 的调用创建并返回一个局部定义的函数 `withdraw` 。名称 `balance` 绑定在此函数的父帧中。重要的是，在本示例的其余部分中，名称 `balance` 将只有这个单一绑定。
+
+接下来，我们求值一个表达式，该表达式调用这个绑定到名称 `wd` 的函数，数值为5。 `withdraw` 的函数主体在一个新环境中执行，该环境扩展了定义 `withdraw` 的环境。跟踪 `withdraw` 运算的效果说明了在 Python 中非局部语句的作用：第一个局部帧之外的名称可以通过赋值语句进行更改。
+
+![image-20221014150224261](https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20221014150224261.png)
+
+非局部（ `nonlocal ` ）语句更改了 `withdraw` 定义中所有剩余的赋值语句。执行 `nonlocal balance` 后，任何在 `=` 左侧有 `balance` 的赋值语句都不会在当前环境的第一帧绑定 `balcance`。相反，它将找到已经定义了 `balance` 的第一个帧，并在该帧中重新绑定名称。如果 `balance` 之前没有被绑定到一个值，那么非局部语句将给出一个错误。
+
+通过更改 `balance` 的绑定，我们也更改了 `withdraw` 功能。下一次调用时，名称 `balance` 的值将为 15 而不是 20 。因此，当我们第二次调用 `withdraw` 时，我们看到它的返回值是 `12` 而不是 `17` 。第一次调用对余额的更改会影响第二次调用的结果。
+
+![image-20221014161018119](https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20221014161018119.png)
+
+第二次调用 `withdraw` 和先前一样，创建了第二个局部帧。然而，两个 `withdraw` 帧都有相同的父帧。也就是说，它们都扩展了 `make_withdraw` 的环境，其中包含了 `withdraw` 的绑定。因此，它们共用了特定的名称绑定。调用 `withdraw` 具有改变环境的副作用，该环境将在未来调用 `withdraw` 时扩展。非局部语句允许 `withdraw` 更改 `make_withdraw` 帧中的名称绑定。
+
+自从我们第一次遇到嵌套的 `def` 语句以来，我们已经观察到局部定义的函数可以在其局部帧之外查找名称。访问非局部的名称不需要任何非局部语句。相比之下，只有在非局部语句之后，函数才能更改这些帧中名称的绑定。
+
+通过引入了非局部语句，我们为赋值语句创建了双重“角色”。赋值语句要么更改局部绑定，要么更改非局部绑定。事实上，赋值语句已经具有双重作用：它们要么创建新绑定，要么重新绑定现有名称。赋值操作也可以改变列表和字典的内容。Python 赋值操作的许多“角色”可能会阻碍执行赋值语句的效果。作为程序员，应该编写清晰的代码，以便其他人能够理解赋值操作的作用。
+
+**Python 特例（Python Particulars）**。这种**非局部赋值（non-local assignment）**模式是具有高阶函数和词法作用域的编程语言的一般特征。大多数的其他语言根本不需要 `nonlocal` 语句。反之，非局部赋值通常是赋值语句的默认行为。
+
+Python 在名称查找方面也有一个非常规的限制：在函数体中，名称的所有实例都必须引用同一帧。因此，Python 不能在非局部帧中查找名称的值，然后将该名称绑定到局部帧中，因为，相同的名称要在同一函数的两个不同帧中访问。这个限制允许 Python 在执行函数体之前预先计算哪个帧包含所有名称。当违反此限制时，会产生令人困惑的错误消息。演示如下，下面重复了 `make_withdraw` 例子，但删除了 `nonlocal` 语句。
+
