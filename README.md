@@ -29,4 +29,4 @@ CS61A 参考书籍Composing Programs 中文翻译：https://www.yuque.com/docs/s
 
 如果感觉有所帮助，请帮我点个Star 吧，谢谢！
 
-> 本翻译遵循协议：CC BY-NC-SA 4.0
+> 本翻译遵循协议：[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by/4.0/)
