@@ -3546,3 +3546,20 @@ wd(3)
 
 Python 在名称查找方面也有一个非常规的限制：在函数体中，名称的所有实例都必须引用同一帧。因此，Python 不能在非局部帧中查找名称的值，然后将该名称绑定到局部帧中，因为，相同的名称要在同一函数的两个不同帧中访问。这个限制允许 Python 在执行函数体之前预先计算哪个帧包含所有名称。当违反此限制时，会产生令人困惑的错误消息。演示如下，下面重复了 `make_withdraw` 例子，但删除了 `nonlocal` 语句。
 
+```python
+def make_withdraw(balance):
+    def withdraw(amount):
+        if amount > balance:
+            return 'Insufficient funds'
+        balance = balance - amount
+        return balance
+    return withdraw
+
+wd = make_withdraw(20)
+wd(5)
+```
+
+![image-20221115100628309](https://yuzu-personal01.oss-cn-shenzhen.aliyuncs.com/img/image-20221115100628309.png)
+
+这里出现了 `UnboundLocalError` ，原因是 `balance` 在第 5 行进行了局部赋值，因此 Python 假定所有对 `balance` 的引用也必须出现在局部帧中。这个错误发生在第 5 行执行之前，这意味着 Python 在执行第 3 行之前已经以某种方式考虑到了第 5 行了。在研究解释器设计时，我们会看到：在执行函数体之前，预先计算有关函数体的实例是很常见的。在这种情况下，Python 的预处理限制了可能出现的 `balance` 的帧，从而阻止了名称的查找。添加一个 `nonlocal` 语句可以纠正这个错误。`nonlocal` 语句在 Python 2 中并不存在。
+
